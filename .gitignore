@@ -1,0 +1,8 @@
+# Build outputs and IDE files
+**/bin/
+**/obj/
+.vs/
+.vscode/
+*.user
+*.suo
+TestResults/
