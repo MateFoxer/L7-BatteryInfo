@@ -23,4 +23,5 @@
   </ItemGroup>
 
   <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\TrayIconColor.cs" Link="TrayIconColor.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\StartupPath.cs" Link="StartupPath.cs" /></ItemGroup>
 </Project>

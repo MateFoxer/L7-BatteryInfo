@@ -42,6 +42,14 @@ The command does not retry or poll. HidSharp's synchronous feature calls may blo
 dotnet run --project src/MouseBatteryTray
 ```
 
-The application starts in the notification area without a window. It performs an initial read and polls every 60 seconds by default. Right-click its icon and choose **Disable automatic monitoring** to stop scheduled reads. **Refresh now** performs one read even when monitoring is off. Use **Exit** to close it. If the icon is hidden, open the taskbar's hidden-icons menu.
+The app reads the battery on startup and every 60 seconds. Right-click its tray icon for **Refresh battery** and **Exit**. Tested on Windows 10 with the MCHOSE L7 Ultra+ 2.4 GHz receiver; Windows 11 compatibility has not been manually tested. Battery values are candidates: cached responses can appear fresh, and other devices are not verified.
 
-The reported percentage is a candidate until checked against MCHOSE HUB and tested with the mouse asleep, disconnected and reconnected. A recent successful response is not proof of fresh device data: the protocol has no verified transaction identifier. The icon turns muted and the tooltip says stale after a failed read or 120 seconds without a successful read. Last-known values and timestamps are kept only in memory. Synchronous native HID calls may block; disabling monitoring stops future requests but cannot interrupt an operation already in progress.
+## Portable executable and startup
+
+```powershell
+dotnet publish src/MouseBatteryTray/MouseBatteryTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o src/MouseBatteryTray/bin/portable
+```
+
+Copy `MouseBatteryTray.exe` to a stable location such as `%LOCALAPPDATA%\Programs\MouseBatteryTray`. In that published copy, use **Start with Windows** in the popup to enable or disable sign-in startup. It is hidden for build and temporary directories. Startup uses the current user's Run key and refuses to replace a conflicting entry. No SDK is required to run the self-contained executable.
+
+To update, exit the running application, replace the executable at the same stable path, and restart it. Keeping the path preserves the startup entry. The application does not move itself or alter startup without interaction.

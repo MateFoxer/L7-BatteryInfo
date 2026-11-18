@@ -19,10 +19,11 @@ internal sealed class TrayApplication : ApplicationContext
     {
         menu.RefreshRequested += async (_, _) => await RefreshAsync();
         menu.ExitRequested += (_, _) => ExitThread();
+        menu.StartupRequested += (_, _) => ToggleStartup();
         tray = new NotifyIcon { Visible = true };
         tray.MouseUp += (_, e) =>
         {
-            if (e.Button == MouseButtons.Right) menu.ShowAt(Cursor.Position);
+            if (e.Button == MouseButtons.Right) { UpdateStartup(); menu.ShowAt(Cursor.Position); }
         };
         timer.Tick += async (_, _) =>
         {
@@ -39,6 +40,33 @@ internal sealed class TrayApplication : ApplicationContext
         UpdateDisplay();
     }
 
+    private void UpdateStartup()
+    {
+        try
+        {
+            string? path = WindowsStartup.PublishedExecutable();
+            menu.SetStartup(path is not null, path is not null && WindowsStartup.IsEnabled(path));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        {
+            menu.SetStartup(false, false);
+        }
+    }
+
+    private void ToggleStartup()
+    {
+        try
+        {
+            string? path = WindowsStartup.PublishedExecutable();
+            if (path is null) return;
+            WindowsStartup.SetEnabled(!WindowsStartup.IsEnabled(path), path);
+            UpdateStartup();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException)
+        {
+            MessageBox.Show("Windows startup could not be updated. An existing entry may point to another application.", "MouseBatteryTray");
+        }
+    }
     private async void OnFirstIdle(object? sender, EventArgs e)
     {
         Application.Idle -= OnFirstIdle;

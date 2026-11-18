@@ -6,6 +6,8 @@ namespace MouseBatteryTray;
 internal sealed class BatteryMenu : Form
 {
     private readonly Button refresh = CreateAction("↻   Refresh battery", "Refresh battery");
+    private readonly Button startup = CreateAction("Start with Windows                       Off", "Start with Windows");
+    private bool startupAvailable;
     private readonly Button exit = CreateAction("⏻   Exit", "Exit");
     private readonly Font titleFont = new("Segoe UI", 9.5f, FontStyle.Bold);
     private readonly Font secondaryFont = new("Segoe UI", 8.25f);
@@ -15,6 +17,7 @@ internal sealed class BatteryMenu : Form
 
     internal event EventHandler? RefreshRequested;
     internal event EventHandler? ExitRequested;
+    internal event EventHandler? StartupRequested;
 
     public BatteryMenu()
     {
@@ -29,6 +32,9 @@ internal sealed class BatteryMenu : Form
         AccessibleName = "MCHOSE L7 Ultra+ battery menu";
         refresh.Font = actionFont;
         exit.Font = actionFont;
+        startup.Font = actionFont;
+        startup.Click += (_, _) => StartupRequested?.Invoke(this, EventArgs.Empty);
+        Controls.Add(startup);
         refresh.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
         exit.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         Controls.Add(refresh);
@@ -48,6 +54,15 @@ internal sealed class BatteryMenu : Form
             AccessibleDescription = value is int p ? $"Battery {p} percent" : "Battery unavailable";
             Invalidate();
         }
+    }
+
+    internal void SetStartup(bool available, bool enabled)
+    {
+        startupAvailable = available;
+        startup.Visible = available;
+        startup.Text = enabled ? "Start with Windows                       On" : "Start with Windows                       Off";
+        startup.ForeColor = enabled ? Color.FromArgb(0x4A, 0xDE, 0x80) : ForeColor;
+        ApplyLayout();
     }
 
     internal void SetRefreshing(bool refreshing)
@@ -93,9 +108,10 @@ internal sealed class BatteryMenu : Form
     private void ApplyLayout()
     {
         int Scale(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
-        ClientSize = new Size(Scale(260), Scale(155));
+        ClientSize = new Size(Scale(260), Scale(startupAvailable ? 195 : 155));
         refresh.SetBounds(Scale(12), Scale(68), Scale(236), Scale(38));
-        exit.SetBounds(Scale(12), Scale(111), Scale(236), Scale(36));
+        startup.SetBounds(Scale(12), Scale(108), Scale(236), Scale(38));
+        exit.SetBounds(Scale(12), Scale(startupAvailable ? 151 : 111), Scale(236), Scale(36));
         refresh.Padding = exit.Padding = new Padding(Scale(8), 0, 0, 0);
         Invalidate();
     }
@@ -138,7 +154,7 @@ internal sealed class BatteryMenu : Form
         using var pen = new Pen(Color.FromArgb(0x41, 0x44, 0x49));
         e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
         e.Graphics.DrawLine(pen, Scale(12), Scale(62), Width - Scale(12), Scale(62));
-        e.Graphics.DrawLine(pen, Scale(12), Scale(108), Width - Scale(12), Scale(108));
+        e.Graphics.DrawLine(pen, Scale(12), Scale(startupAvailable ? 148 : 108), Width - Scale(12), Scale(startupAvailable ? 148 : 108));
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -146,7 +162,7 @@ internal sealed class BatteryMenu : Form
         if (keyData == Keys.Escape) { Hide(); return true; }
         if (keyData is Keys.Up or Keys.Down)
         {
-            (refresh.Focused || !refresh.Enabled ? exit : refresh).Focus();
+            SelectNextControl(ActiveControl, keyData == Keys.Down, true, true, true);
             return true;
         }
         return base.ProcessCmdKey(ref msg, keyData);
