@@ -7,6 +7,8 @@ internal sealed class TrayApplication : ApplicationContext
 {
     private readonly NotifyIcon tray;
     private readonly BatteryMenu menu = new();
+    private readonly string settingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MouseBatteryTray", "alerts.json");
+    private AlertSettings alerts = new();
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 1000 };
     private Icon? icon;
     private (int? Percent, bool Muted)? rendered;
@@ -17,6 +19,9 @@ internal sealed class TrayApplication : ApplicationContext
 
     public TrayApplication()
     {
+        alerts = AlertSettings.Load(settingsPath);
+        menu.SetAlerts(alerts.Enabled);
+        menu.AlertsRequested += (_, _) => ToggleAlerts();
         menu.RefreshRequested += async (_, _) => await RefreshAsync();
         menu.ExitRequested += (_, _) => ExitThread();
         menu.StartupRequested += (_, _) => ToggleStartup();
@@ -38,6 +43,14 @@ internal sealed class TrayApplication : ApplicationContext
         Application.Idle += OnFirstIdle;
         timer.Start();
         UpdateDisplay();
+    }
+
+    private void ToggleAlerts()
+    {
+        bool previous = alerts.Enabled;
+        alerts.Enabled = !previous;
+        if (!alerts.Save(settingsPath)) { alerts.Enabled = previous; MessageBox.Show("Alert preference could not be saved.", "MouseBatteryTray"); }
+        menu.SetAlerts(alerts.Enabled);
     }
 
     private void UpdateStartup()
@@ -86,6 +99,7 @@ internal sealed class TrayApplication : ApplicationContext
             last = result;
             lastTick = Stopwatch.GetTimestamp();
             failed = false;
+            NotifyIfLow(result.Percent);
         }
         catch (Exception)
         {
@@ -103,6 +117,19 @@ internal sealed class TrayApplication : ApplicationContext
         }
     }
 
+    private void NotifyIfLow(int percent)
+    {
+        int? threshold = alerts.ObserveAndPersist(percent, true, () => alerts.Save(settingsPath));
+        if (threshold is null) return;
+        try
+        {
+            tray.BalloonTipTitle = "MCHOSE L7 Ultra+";
+            tray.BalloonTipText = threshold == 10 ? $"Mouse battery is critically low — {percent}% remaining." : $"Mouse battery is low — {percent}% remaining.";
+            tray.BalloonTipIcon = ToolTipIcon.Warning;
+            tray.ShowBalloonTip(5000);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+    }
     private void UpdateDisplay()
     {
         bool stale = last is not null && (failed || Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120));

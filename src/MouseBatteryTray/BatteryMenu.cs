@@ -7,6 +7,8 @@ internal sealed class BatteryMenu : Form
 {
     private readonly Button refresh = CreateAction("↻   Refresh battery", "Refresh battery");
     private readonly Button startup = CreateAction("Start with Windows                       Off", "Start with Windows");
+    private readonly Button alerts = CreateAction("Low battery alerts", "Low battery alerts");
+    private bool alertsEnabled = true;
     private bool startupAvailable;
     private readonly Button exit = CreateAction("⏻   Exit", "Exit");
     private readonly Font titleFont = new("Segoe UI", 9.5f, FontStyle.Bold);
@@ -18,6 +20,7 @@ internal sealed class BatteryMenu : Form
     internal event EventHandler? RefreshRequested;
     internal event EventHandler? ExitRequested;
     internal event EventHandler? StartupRequested;
+    internal event EventHandler? AlertsRequested;
 
     public BatteryMenu()
     {
@@ -33,6 +36,10 @@ internal sealed class BatteryMenu : Form
         refresh.Font = actionFont;
         exit.Font = actionFont;
         startup.Font = actionFont;
+        alerts.Font = actionFont;
+        alerts.Paint += (_, e) => DrawAlertState(e.Graphics);
+        alerts.Click += (_, _) => AlertsRequested?.Invoke(this, EventArgs.Empty);
+        Controls.Add(alerts);
         startup.Click += (_, _) => StartupRequested?.Invoke(this, EventArgs.Empty);
         Controls.Add(startup);
         refresh.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
@@ -63,6 +70,22 @@ internal sealed class BatteryMenu : Form
         startup.Text = enabled ? "Start with Windows                       On" : "Start with Windows                       Off";
         startup.ForeColor = enabled ? Color.FromArgb(0x4A, 0xDE, 0x80) : ForeColor;
         ApplyLayout();
+    }
+
+    internal void SetAlerts(bool enabled)
+    {
+        alertsEnabled = enabled;
+        alerts.AccessibleDescription = enabled ? "On" : "Off";
+        alerts.Invalidate();
+    }
+
+    private void DrawAlertState(Graphics graphics)
+    {
+        int inset = (int)Math.Round(8 * DeviceDpi / 96.0);
+        TextRenderer.DrawText(graphics, alertsEnabled ? "On" : "Off", actionFont,
+            new Rectangle(0, 0, alerts.Width - inset, alerts.Height),
+            alertsEnabled ? Color.FromArgb(0x4A, 0xDE, 0x80) : Color.FromArgb(0x9D, 0xA4, 0xAE),
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     internal void SetRefreshing(bool refreshing)
@@ -108,10 +131,11 @@ internal sealed class BatteryMenu : Form
     private void ApplyLayout()
     {
         int Scale(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
-        ClientSize = new Size(Scale(260), Scale(startupAvailable ? 195 : 155));
+        ClientSize = new Size(Scale(260), Scale(startupAvailable ? 235 : 195));
         refresh.SetBounds(Scale(12), Scale(68), Scale(236), Scale(38));
         startup.SetBounds(Scale(12), Scale(108), Scale(236), Scale(38));
-        exit.SetBounds(Scale(12), Scale(startupAvailable ? 151 : 111), Scale(236), Scale(36));
+        alerts.SetBounds(Scale(12), Scale(startupAvailable ? 148 : 108), Scale(236), Scale(38));
+        exit.SetBounds(Scale(12), Scale(startupAvailable ? 191 : 151), Scale(236), Scale(36));
         refresh.Padding = exit.Padding = new Padding(Scale(8), 0, 0, 0);
         Invalidate();
     }
@@ -154,7 +178,7 @@ internal sealed class BatteryMenu : Form
         using var pen = new Pen(Color.FromArgb(0x41, 0x44, 0x49));
         e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
         e.Graphics.DrawLine(pen, Scale(12), Scale(62), Width - Scale(12), Scale(62));
-        e.Graphics.DrawLine(pen, Scale(12), Scale(startupAvailable ? 148 : 108), Width - Scale(12), Scale(startupAvailable ? 148 : 108));
+        e.Graphics.DrawLine(pen, Scale(12), Scale(startupAvailable ? 188 : 148), Width - Scale(12), Scale(startupAvailable ? 188 : 148));
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
