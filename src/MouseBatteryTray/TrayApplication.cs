@@ -1,4 +1,5 @@
 using MouseBatteryTray.Hid;
+using System.Diagnostics;
 
 namespace MouseBatteryTray;
 
@@ -14,7 +15,8 @@ internal sealed class TrayApplication : ApplicationContext
     private (int? Percent, bool Muted)? rendered;
     private BatteryReading? last;
     private DateTimeOffset lastAt;
-    private DateTimeOffset nextPoll;
+    private long lastTick;
+    private long nextPoll;
     private bool monitoring, busy, failed, closing;
     private int generation;
 
@@ -33,7 +35,7 @@ internal sealed class TrayApplication : ApplicationContext
             monitoring = !monitoring;
             generation++;
             monitorItem.Text = monitoring ? "Disable automatic monitoring" : "Enable automatic monitoring";
-            nextPoll = DateTimeOffset.UtcNow.AddSeconds(60);
+            nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
             UpdateDisplay();
             if (monitoring) await RefreshAsync();
         };
@@ -41,9 +43,9 @@ internal sealed class TrayApplication : ApplicationContext
         timer.Tick += async (_, _) =>
         {
             UpdateDisplay();
-            if (monitoring && !busy && DateTimeOffset.UtcNow >= nextPoll)
+            if (monitoring && !busy && Stopwatch.GetTimestamp() >= nextPoll)
             {
-                nextPoll = DateTimeOffset.UtcNow.AddSeconds(60);
+                nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
                 await RefreshAsync();
             }
         };
@@ -64,11 +66,13 @@ internal sealed class TrayApplication : ApplicationContext
             if (closing || startGeneration != generation) return;
             last = result;
             lastAt = DateTimeOffset.Now;
+            lastTick = Stopwatch.GetTimestamp();
             failed = false;
         }
         catch (Exception)
         {
-            if (!closing && startGeneration == generation) failed = true;
+            // A failed in-flight read invalidates recency even if monitoring was toggled.
+            if (!closing) failed = true;
         }
         finally
         {
@@ -76,7 +80,7 @@ internal sealed class TrayApplication : ApplicationContext
             if (!closing)
             {
                 refreshItem.Enabled = true;
-                if (monitoring) nextPoll = DateTimeOffset.UtcNow.AddSeconds(60);
+                if (monitoring) nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
                 UpdateDisplay();
             }
         }
@@ -84,7 +88,7 @@ internal sealed class TrayApplication : ApplicationContext
 
     private void UpdateDisplay()
     {
-        bool stale = last is not null && (failed || DateTimeOffset.Now - lastAt > TimeSpan.FromSeconds(120));
+        bool stale = last is not null && (failed || Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120));
         string status = last is null ? (failed ? "Unavailable / disconnected" : "Unavailable")
             : stale ? $"{last.Percent}% — stale (last {lastAt:HH:mm:ss})"
             : $"{last.Percent}% — recent candidate ({lastAt:HH:mm:ss})";
@@ -117,4 +121,3 @@ internal sealed class TrayApplication : ApplicationContext
         base.ExitThreadCore();
     }
 }
-
