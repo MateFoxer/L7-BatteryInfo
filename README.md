@@ -42,6 +42,6 @@ The command does not retry or poll. HidSharp's synchronous feature calls may blo
 dotnet run --project src/MouseBatteryTray
 ```
 
-The application starts in the notification area without a window. Right-click its icon and choose **Enable automatic monitoring** to begin 60-second polling; monitoring is off at every launch. **Refresh now** performs one read even when monitoring is off. Use **Exit** to close it. If the icon is hidden, open the taskbar's hidden-icons menu.
+The application starts in the notification area without a window. It performs an initial read and polls every 60 seconds by default. Right-click its icon and choose **Disable automatic monitoring** to stop scheduled reads. **Refresh now** performs one read even when monitoring is off. Use **Exit** to close it. If the icon is hidden, open the taskbar's hidden-icons menu.
 
 The reported percentage is a candidate until checked against MCHOSE HUB and tested with the mouse asleep, disconnected and reconnected. A recent successful response is not proof of fresh device data: the protocol has no verified transaction identifier. The icon turns muted and the tooltip says stale after a failed read or 120 seconds without a successful read. Last-known values and timestamps are kept only in memory. Synchronous native HID calls may block; disabling monitoring stops future requests but cannot interrupt an operation already in progress.

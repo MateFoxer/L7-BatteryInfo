@@ -1,5 +1,4 @@
 using System.Drawing.Drawing2D;
-using System.Drawing.Text;
 using System.Runtime.InteropServices;
 
 namespace MouseBatteryTray;
@@ -10,18 +9,24 @@ internal static class TrayIconRenderer
 
     public static Icon Create(int? percent, bool muted)
     {
-        // Render at a larger size for Windows to scale at different taskbar DPIs.
+        // Fit bold glyph outlines to nearly the full canvas, then scale for the tray.
         using var bitmap = new Bitmap(64, 64);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        graphics.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-        var color = muted ? Color.DimGray : percent <= 20 ? Color.DarkRed : Color.FromArgb(24, 100, 65);
-        using var brush = new SolidBrush(color);
-        graphics.FillEllipse(brush, 1, 1, 62, 62);
         string text = percent?.ToString() ?? "?";
-        using var font = new Font("Segoe UI", text.Length == 3 ? 21 : 27, FontStyle.Bold, GraphicsUnit.Pixel);
-        using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-        graphics.DrawString(text, font, Brushes.White, new RectangleF(0, 0, 64, 64), format);
+        using var family = new FontFamily("Segoe UI");
+        using var path = new GraphicsPath();
+        path.AddString(text, family, (int)FontStyle.Bold, 64, PointF.Empty, StringFormat.GenericTypographic);
+        var bounds = path.GetBounds();
+        float scale = Math.Min(58 / bounds.Width, 55 / bounds.Height);
+        using var transform = new Matrix(scale, 0, 0, scale,
+            (64 - bounds.Width * scale) / 2 - bounds.X * scale,
+            (64 - bounds.Height * scale) / 2 - bounds.Y * scale);
+        path.Transform(transform);
+        using var outline = new Pen(Color.Black, 4) { LineJoin = LineJoin.Round };
+        using var fill = new SolidBrush(muted ? Color.Silver : percent <= 20 ? Color.OrangeRed : Color.White);
+        graphics.DrawPath(outline, path);
+        graphics.FillPath(fill, path);
         var handle = bitmap.GetHicon();
         try { using var temporary = Icon.FromHandle(handle); return (Icon)temporary.Clone(); }
         finally { DestroyIcon(handle); }

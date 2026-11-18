@@ -9,7 +9,7 @@ internal sealed class TrayApplication : ApplicationContext
     private readonly ContextMenuStrip menu = new();
     private readonly ToolStripMenuItem statusItem = new("Battery: unavailable") { Enabled = false };
     private readonly ToolStripMenuItem refreshItem = new("Refresh now");
-    private readonly ToolStripMenuItem monitorItem = new("Enable automatic monitoring");
+    private readonly ToolStripMenuItem monitorItem = new("Disable automatic monitoring");
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 1000 };
     private Icon? icon;
     private (int? Percent, bool Muted)? rendered;
@@ -17,7 +17,8 @@ internal sealed class TrayApplication : ApplicationContext
     private DateTimeOffset lastAt;
     private long lastTick;
     private long nextPoll;
-    private bool monitoring, busy, failed, closing;
+    private bool monitoring = true;
+    private bool busy, failed, closing;
     private int generation;
 
     public TrayApplication()
@@ -49,8 +50,16 @@ internal sealed class TrayApplication : ApplicationContext
                 await RefreshAsync();
             }
         };
+        nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+        Application.Idle += OnFirstIdle;
         timer.Start();
         UpdateDisplay();
+    }
+
+    private async void OnFirstIdle(object? sender, EventArgs e)
+    {
+        Application.Idle -= OnFirstIdle;
+        if (monitoring && !closing) await RefreshAsync();
     }
 
     private async Task RefreshAsync()
@@ -93,7 +102,9 @@ internal sealed class TrayApplication : ApplicationContext
             : stale ? $"{last.Percent}% — stale (last {lastAt:HH:mm:ss})"
             : $"{last.Percent}% — recent candidate ({lastAt:HH:mm:ss})";
         statusItem.Text = $"Battery: {status}";
-        var tooltip = $"MCHOSE L7 Ultra+\n{status}";
+        var tooltip = last is null
+            ? $"MCHOSE L7 Ultra+\nBattery: unavailable\nStatus: {(busy ? "Reading" : failed ? "Unavailable / disconnected" : "Waiting")}"
+            : $"MCHOSE L7 Ultra+\nBattery: {last.Percent}%\nStatus: {(stale ? "Stale" : "Recent candidate reading")}";
         tray.Text = tooltip.Length <= 127 ? tooltip : tooltip[..127];
         // No protocol transaction ID exists: even a recent candidate's freshness cannot be proven.
         var appearance = (Percent: last?.Percent, Muted: last is null || stale);
@@ -109,6 +120,7 @@ internal sealed class TrayApplication : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        Application.Idle -= OnFirstIdle;
         closing = true;
         generation++;
         monitoring = false;
