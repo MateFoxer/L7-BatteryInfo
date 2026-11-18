@@ -6,45 +6,28 @@ namespace MouseBatteryTray;
 internal sealed class TrayApplication : ApplicationContext
 {
     private readonly NotifyIcon tray;
-    private readonly ContextMenuStrip menu = new();
-    private readonly ToolStripMenuItem statusItem = new("Battery: unavailable") { Enabled = false };
-    private readonly ToolStripMenuItem refreshItem = new("Refresh now");
-    private readonly ToolStripMenuItem monitorItem = new("Disable automatic monitoring");
+    private readonly BatteryMenu menu = new();
     private readonly System.Windows.Forms.Timer timer = new() { Interval = 1000 };
     private Icon? icon;
     private (int? Percent, bool Muted)? rendered;
     private BatteryReading? last;
-    private DateTimeOffset lastAt;
     private long lastTick;
     private long nextPoll;
-    private bool monitoring = true;
     private bool busy, failed, closing;
-    private int generation;
 
     public TrayApplication()
     {
-        menu.Items.Add(new ToolStripMenuItem("MCHOSE L7 Ultra+") { Enabled = false });
-        menu.Items.Add(statusItem);
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(refreshItem);
-        menu.Items.Add(monitorItem);
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Exit", null, (_, _) => ExitThread());
-        refreshItem.Click += async (_, _) => await RefreshAsync();
-        monitorItem.Click += async (_, _) =>
+        menu.RefreshRequested += async (_, _) => await RefreshAsync();
+        menu.ExitRequested += (_, _) => ExitThread();
+        tray = new NotifyIcon { Visible = true };
+        tray.MouseUp += (_, e) =>
         {
-            monitoring = !monitoring;
-            generation++;
-            monitorItem.Text = monitoring ? "Disable automatic monitoring" : "Enable automatic monitoring";
-            nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
-            UpdateDisplay();
-            if (monitoring) await RefreshAsync();
+            if (e.Button == MouseButtons.Right) menu.ShowAt(Cursor.Position);
         };
-        tray = new NotifyIcon { ContextMenuStrip = menu, Visible = true };
         timer.Tick += async (_, _) =>
         {
             UpdateDisplay();
-            if (monitoring && !busy && Stopwatch.GetTimestamp() >= nextPoll)
+            if (!busy && Stopwatch.GetTimestamp() >= nextPoll)
             {
                 nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
                 await RefreshAsync();
@@ -59,28 +42,25 @@ internal sealed class TrayApplication : ApplicationContext
     private async void OnFirstIdle(object? sender, EventArgs e)
     {
         Application.Idle -= OnFirstIdle;
-        if (monitoring && !closing) await RefreshAsync();
+        if (!closing) await RefreshAsync();
     }
 
     private async Task RefreshAsync()
     {
         if (busy || closing) return;
         busy = true;
-        int startGeneration = generation;
-        refreshItem.Enabled = false;
+        menu.SetRefreshing(true);
         try
         {
             // Synchronous native HID calls run off the UI thread; they cannot be forcibly cancelled safely.
             var result = await Task.Run(BatteryReader.ReadOnce);
-            if (closing || startGeneration != generation) return;
+            if (closing) return;
             last = result;
-            lastAt = DateTimeOffset.Now;
             lastTick = Stopwatch.GetTimestamp();
             failed = false;
         }
         catch (Exception)
         {
-            // A failed in-flight read invalidates recency even if monitoring was toggled.
             if (!closing) failed = true;
         }
         finally
@@ -88,8 +68,8 @@ internal sealed class TrayApplication : ApplicationContext
             busy = false;
             if (!closing)
             {
-                refreshItem.Enabled = true;
-                if (monitoring) nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
+                menu.SetRefreshing(false);
+                nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
                 UpdateDisplay();
             }
         }
@@ -98,15 +78,11 @@ internal sealed class TrayApplication : ApplicationContext
     private void UpdateDisplay()
     {
         bool stale = last is not null && (failed || Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120));
-        string status = last is null ? (failed ? "Unavailable / disconnected" : "Unavailable")
-            : stale ? $"{last.Percent}% — stale (last {lastAt:HH:mm:ss})"
-            : $"{last.Percent}% — recent candidate ({lastAt:HH:mm:ss})";
-        statusItem.Text = $"Battery: {status}";
+        menu.Percent = stale ? null : last?.Percent;
         var tooltip = last is null
             ? $"MCHOSE L7 Ultra+\nBattery: unavailable\nStatus: {(busy ? "Reading" : failed ? "Unavailable / disconnected" : "Waiting")}"
             : $"MCHOSE L7 Ultra+\nBattery: {last.Percent}%\nStatus: {(stale ? "Stale" : "Recent candidate reading")}";
         tray.Text = tooltip.Length <= 127 ? tooltip : tooltip[..127];
-        // No protocol transaction ID exists: even a recent candidate's freshness cannot be proven.
         var appearance = (Percent: last?.Percent, Muted: last is null || stale);
         if (rendered != appearance)
         {
@@ -122,8 +98,6 @@ internal sealed class TrayApplication : ApplicationContext
     {
         Application.Idle -= OnFirstIdle;
         closing = true;
-        generation++;
-        monitoring = false;
         timer.Stop();
         timer.Dispose();
         tray.Visible = false;
