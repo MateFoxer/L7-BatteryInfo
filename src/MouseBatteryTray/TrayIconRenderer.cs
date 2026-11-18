@@ -9,23 +9,26 @@ internal static class TrayIconRenderer
 
     public static Icon Create(int? percent, bool muted)
     {
-        // Fit bold glyph outlines to nearly the full canvas, then scale for the tray.
-        using var bitmap = new Bitmap(64, 64);
+        const int size = 64;
+        using var bitmap = new Bitmap(size, size);
         using var graphics = Graphics.FromImage(bitmap);
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        string text = percent?.ToString() ?? "?";
+        string text = percent?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
         using var family = new FontFamily("Segoe UI");
         using var path = new GraphicsPath();
-        path.AddString(text, family, (int)FontStyle.Bold, 64, PointF.Empty, StringFormat.GenericTypographic);
+        path.AddString(text, family, (int)FontStyle.Bold, size, PointF.Empty, StringFormat.GenericTypographic);
         var bounds = path.GetBounds();
-        float scale = Math.Min(58 / bounds.Width, 55 / bounds.Height);
+        // A single uniform scale keeps glyph proportions and baseline intact, including for 100.
+        float scale = Math.Min(60 / bounds.Width, 56 / bounds.Height);
         using var transform = new Matrix(scale, 0, 0, scale,
-            (64 - bounds.Width * scale) / 2 - bounds.X * scale,
-            (64 - bounds.Height * scale) / 2 - bounds.Y * scale);
+            (size - bounds.Width * scale) / 2 - bounds.X * scale,
+            (size - bounds.Height * scale) / 2 - bounds.Y * scale);
         path.Transform(transform);
-        using var outline = new Pen(Color.Black, 4) { LineJoin = LineJoin.Round };
-        using var fill = new SolidBrush(muted ? Color.Silver : percent <= 20 ? Color.OrangeRed : Color.White);
-        graphics.DrawPath(outline, path);
+        int rgb = TrayIconColor.ForReading(percent, muted);
+        using var fill = new SolidBrush(Color.FromArgb((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255));
+        // A narrow edge maintains contrast on light taskbars without a heavy outline.
+        using var edge = new Pen(Color.FromArgb(210, 30, 30, 30), 2) { LineJoin = LineJoin.Round };
+        graphics.DrawPath(edge, path);
         graphics.FillPath(fill, path);
         var handle = bitmap.GetHicon();
         try { using var temporary = Icon.FromHandle(handle); return (Icon)temporary.Clone(); }
