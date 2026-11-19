@@ -1,4 +1,4 @@
-﻿namespace MouseBatteryTray.Hid.Tests;
+namespace MouseBatteryTray.Hid.Tests;
 
 public class LifecycleTests
 {
@@ -56,5 +56,37 @@ public class LifecycleTests
         var a = new AlertSettings(); Assert.Equal(10, a.Observe(9, true));
         var s = new LifecycleState(); s.Resume(0); s.DeviceChanged(1); s.Shutdown();
         Assert.True(a.LowSent); Assert.True(a.CriticalSent); Assert.Null(a.Observe(9, true));
+    }
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void FailedVerificationCancelsPendingResumeRefresh(int value)
+    {
+        var result = (ReceiverState)value;
+        var s = new LifecycleState();
+        s.Resume(0);
+        s.Verified(result, s.Generation, 100);
+        Assert.True(s.Stale);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(3000, false));
+        Assert.Equal(result, s.Receiver);
+        if (result == ReceiverState.Unknown) Assert.Equal(RecoveryWork.Verify, s.TakeWork(60100, false));
+    }
+    [Fact] public void ResumeDuringVerificationRequiresNewVerification()
+    {
+        var s = new LifecycleState(); s.DeviceChanged(0);
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+        int old = s.Generation; s.Resume(3100);
+        s.Verified(ReceiverState.Present, old, 3200);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(6099, false));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(6100, false));
+        s.Verified(ReceiverState.Present, s.Generation, 6100);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(9100, false));
+        Assert.Equal(RecoveryWork.None, s.TakeWork(9101, false));
+    }
+    [Fact] public void ResumeWhileDeviceCheckQueuedDoesNotBypassIt()
+    {
+        var s = new LifecycleState(); s.DeviceChanged(0); s.Resume(1000);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(3000, false));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(4000, false));
     }
 }

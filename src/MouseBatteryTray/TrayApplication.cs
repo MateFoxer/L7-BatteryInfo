@@ -188,7 +188,7 @@ internal sealed class TrayApplication : ApplicationContext
         try
         {
             tray.BalloonTipTitle = "MCHOSE L7 Ultra+";
-            tray.BalloonTipText = threshold == 10 ? $"Mouse battery is critically low Ã¢â‚¬â€ {percent}% remaining." : $"Mouse battery is low Ã¢â‚¬â€ {percent}% remaining.";
+            tray.BalloonTipText = threshold == 10 ? $"Mouse battery is critically low - {percent}% remaining." : $"Mouse battery is low - {percent}% remaining.";
             tray.BalloonTipIcon = ToolTipIcon.Warning;
             tray.ShowBalloonTip(5000);
         }
