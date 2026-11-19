@@ -4,7 +4,7 @@ MouseBatteryTray is a learning project for a lightweight Windows mouse-battery t
 
 ## Requirements
 
-Windows 10 or 11 and the .NET 10 SDK. Connect the 2.4 GHz receiver before scanning. Administrator privileges should not normally be needed; individual descriptors may be unavailable.
+Windows 10 is the tested environment; Windows 11 compatibility has not been manually tested. The .NET 10 SDK is needed for development, not for the self-contained portable EXE. Connect the 2.4 GHz receiver before scanning. Administrator privileges should not normally be needed; individual descriptors may be unavailable.
 
 ## Build and scan
 
@@ -16,7 +16,7 @@ dotnet run --project tools/MouseBatteryTray.DeviceScanner
 dotnet run --project tools/MouseBatteryTray.DeviceScanner -- --all
 ```
 
-Candidates match VID `0x5253` or `0x3837`, or contain `MCHOSE` in an available manufacturer/product string. These are discovery hints, not proof of the mouse model or compatibility. The L7 Ultra+ battery protocol is not verified. No PID is assumed. One receiver can expose multiple HID interfaces. Interface numbers and usages may be unavailable, and report lengths include the report ID byte. The scanner does not print serial numbers or full device paths. Review output before sharing, especially when using `--all`.
+Candidates match VID `0x5253` or `0x3837`, or contain `MCHOSE` in an available manufacturer/product string. These are discovery hints, not proof of the mouse model or compatibility. The L7 Ultra+ battery protocol is not verified. The scanner assumes no PID; the experimental probe and app target receiver PID `0x1020`. One receiver can expose multiple HID interfaces. Interface numbers and usages may be unavailable, and report lengths include the report ID byte. The scanner does not print serial numbers or full device paths. Review output before sharing, especially when using `--all`.
 
 The scanner enumerates HID interfaces and reads descriptor information only; it sends no HID output or feature reports and does not change device settings. HidSharp may enumerate non-USB HID transports too, depending on the operating system; the scanner does not claim to verify the transport.
 
@@ -53,3 +53,9 @@ dotnet publish src/MouseBatteryTray/MouseBatteryTray.csproj -c Release -r win-x6
 Copy `MouseBatteryTray.exe` to a stable location such as `%LOCALAPPDATA%\Programs\MouseBatteryTray`. In that published copy, use **Start with Windows** in the popup to enable or disable sign-in startup. It is hidden for build and temporary directories. Startup uses the current user's Run key and refuses to replace a conflicting entry. No SDK is required to run the self-contained executable.
 
 To update, exit the running application, replace the executable at the same stable path, and restart it. Keeping the path preserves the startup entry. The application does not move itself or alter startup without interaction.
+
+## Recovery and limitations
+
+Resume and HID device-list changes invalidate the previous reading and trigger a delayed recovery check. Notifications for unrelated HID devices may also mark the reading stale because the event does not identify the changed device. An inaccessible descriptor is treated as unknown and retried conservatively; unplug/replug and sleep behavior still require manual hardware QA. The receiver may return a cached, valid-looking response, so freshness and battery accuracy cannot be guaranteed solely by the protocol. Low-battery alerts depend on Windows notification settings and persist their preference and suppression state locally.
+
+See [manual release QA](docs/release-qa.md) for the unexecuted Windows 10 checklist.

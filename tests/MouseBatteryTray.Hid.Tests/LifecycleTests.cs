@@ -89,4 +89,26 @@ public class LifecycleTests
         Assert.Equal(RecoveryWork.None, s.TakeWork(3000, false));
         Assert.Equal(RecoveryWork.Verify, s.TakeWork(4000, false));
     }
+    [Fact] public void InitialStateAllowsFirstReadAndAcceptsConnectedResult()
+    {
+        var s = new LifecycleState();
+        Assert.False(s.Pending); Assert.Equal(ReceiverState.Unknown, s.Receiver);
+        Assert.True(s.Accept(s.Generation)); s.ReadingAccepted();
+        Assert.Equal(ReceiverState.Present, s.Receiver); Assert.False(s.Stale);
+    }
+    [Fact] public void StartupWithoutReceiverCanBeConfirmedAbsent()
+    {
+        var s = new LifecycleState(); s.DeviceChanged(0);
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+        s.Verified(ReceiverState.Absent, s.Generation, 3000);
+        Assert.True(s.Stale); Assert.Equal(ReceiverState.Absent, s.Receiver);
+        Assert.False(s.Pending);
+    }
+    [Fact] public void ResumeDuringReadRejectsOldResultAndQueuesOneRefresh()
+    {
+        var s = new LifecycleState(); int old = s.Generation; s.Resume(0); s.Resume(500);
+        Assert.False(s.Accept(old)); Assert.Equal(RecoveryWork.None, s.TakeWork(3500, true));
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(3500, false));
+        Assert.Equal(RecoveryWork.None, s.TakeWork(3501, false));
+    }
 }
