@@ -6,3 +6,8 @@
 *.user
 *.suo
 TestResults/
+
+
+# Local release builds
+/publish/
+/release-artifacts/
