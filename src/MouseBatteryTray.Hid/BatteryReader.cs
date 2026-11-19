@@ -9,10 +9,12 @@ public static class BatteryReader
     public static BatteryDevice SelectDevice()
     {
         var candidates = new List<BatteryDevice>();
+        bool matchingInterface = false;
         foreach (var device in DeviceList.Local.GetHidDevices())
         {
             if (device.VendorID != 0x5253 || device.ProductID != 0x1020 ||
                 !Regex.IsMatch(device.DevicePath, @"(?:^|&)mi_02(?:&|#)", RegexOptions.IgnoreCase)) continue;
+            matchingInterface = true;
             var descriptor = device.GetReportDescriptor();
             var items = descriptor.DeviceItems.Where(item => item.Usages.GetAllValues().Contains(0xFF010001u)).ToArray();
             if (items.Length == 0) continue;
@@ -20,6 +22,7 @@ public static class BatteryReader
                 .Select(report => report.Length).Distinct().ToArray();
             candidates.Add(new BatteryDevice(device, device.GetMaxFeatureReportLength(), lengths));
         }
+        if (!matchingInterface) throw new ReceiverAbsentException();
         if (candidates.Count != 1) throw new InvalidOperationException($"Expected one matching collection; found {candidates.Count}.");
         var selected = candidates[0];
         if (selected.BufferLength != 65 || selected.ReportLengths.Length != 1 ||
@@ -41,6 +44,11 @@ public static class BatteryReader
         if (!BatteryProtocol.IsLikelyWirelessOnline(reading)) throw new InvalidDataException("Status does not indicate an active wireless link.");
         return reading;
     }
+}
+
+public sealed class ReceiverAbsentException : InvalidOperationException
+{
+    public ReceiverAbsentException() : base("No matching receiver interface was found.") { }
 }
 
 public sealed record BatteryDevice(HidDevice Device, int BufferLength, int[] ReportLengths);

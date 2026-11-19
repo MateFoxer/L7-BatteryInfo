@@ -7,7 +7,7 @@ internal static class TrayIconRenderer
 {
     [DllImport("user32.dll")] private static extern bool DestroyIcon(IntPtr icon);
 
-    public static Icon Create(int? percent, bool muted)
+    public static Icon Create(int? percent, bool muted, bool light)
     {
         int size = Math.Max(16, SystemInformation.SmallIconSize.Width);
         string text = percent?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "?";
@@ -27,7 +27,7 @@ internal static class TrayIconRenderer
         }
 
         using var bitmap = new Bitmap(size, size, PixelFormat.Format32bppArgb);
-        int rgb = TrayIconColor.ForReading(percent, muted);
+        int rgb = TrayIconColor.ForReading(percent, muted, light);
         int left = (size - bounds.Width) / 2;
         int top = (size - bounds.Height) / 2;
         for (int y = 0; y < bounds.Height; y++)

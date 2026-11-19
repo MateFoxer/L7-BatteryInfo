@@ -25,4 +25,5 @@
   <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\TrayIconColor.cs" Link="TrayIconColor.cs" /></ItemGroup>
   <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\StartupPath.cs" Link="StartupPath.cs" /></ItemGroup>
   <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\AlertSettings.cs" Link="AlertSettings.cs" /></ItemGroup>
+  <ItemGroup><Compile Include="..\..\src\MouseBatteryTray\LifecycleState.cs" Link="LifecycleState.cs" /></ItemGroup>
 </Project>
