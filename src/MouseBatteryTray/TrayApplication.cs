@@ -61,7 +61,7 @@ internal sealed class TrayApplication : ApplicationContext
             }
         };
         nextPoll = Stopwatch.GetTimestamp() + 60 * Stopwatch.Frequency;
-        Application.Idle += OnFirstIdle;
+        lifecycle.QueueInitialRead(Now());
         timer.Start();
         UpdateDisplay();
     }
@@ -144,12 +144,6 @@ internal sealed class TrayApplication : ApplicationContext
             MessageBox.Show("Windows startup could not be updated. An existing entry may point to another application.", "L7-BatteryInfo");
         }
     }
-    private async void OnFirstIdle(object? sender, EventArgs e)
-    {
-        Application.Idle -= OnFirstIdle;
-        if (!closing) await RefreshAsync();
-    }
-
     private async Task RefreshAsync()
     {
         if (busy || closing || lifecycle.Pending) return;
@@ -217,7 +211,6 @@ internal sealed class TrayApplication : ApplicationContext
 
     protected override void ExitThreadCore()
     {
-        Application.Idle -= OnFirstIdle;
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         DeviceList.Local.Changed -= OnDevicesChanged;
         closing = true;

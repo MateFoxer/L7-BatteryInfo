@@ -13,6 +13,11 @@ internal sealed class LifecycleState
     private long? verifyAt, refreshAt;
     private bool verifying;
 
+    internal void QueueInitialRead(long now)
+    {
+        if (!Closed && !Pending && !verifying) refreshAt = now;
+    }
+
     internal void Resume(long now)
     {
         if (Closed) return;

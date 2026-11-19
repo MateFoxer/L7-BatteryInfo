@@ -111,4 +111,56 @@ public class LifecycleTests
         Assert.Equal(RecoveryWork.Refresh, s.TakeWork(3500, false));
         Assert.Equal(RecoveryWork.None, s.TakeWork(3501, false));
     }
+    [Fact] public void StartupQueuesExactlyOneRead()
+    {
+        var s = new LifecycleState(); s.QueueInitialRead(0);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(0, false));
+        Assert.Equal(RecoveryWork.None, s.TakeWork(1, false));
+        Assert.True(s.Accept(s.Generation));
+    }
+    [Fact] public void StartupWaitsForPendingVerification()
+    {
+        var s = new LifecycleState(); s.DeviceChanged(0); s.QueueInitialRead(1);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(2999, false));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+        s.QueueInitialRead(3001);
+        s.Verified(ReceiverState.Present, s.Generation, 3001);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(6001, false));
+        Assert.Equal(RecoveryWork.None, s.TakeWork(6002, false));
+    }
+    [Fact] public void StartupReadInvalidatedByDeviceChangeRecovers()
+    {
+        var s = new LifecycleState(); s.QueueInitialRead(0);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(0, false)); int old = s.Generation;
+        s.DeviceChanged(1); Assert.False(s.Accept(old));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3001, false));
+        s.Verified(ReceiverState.Present, s.Generation, 3001);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(6001, false));
+    }
+    [Fact] public void StartupWithoutReceiverWaitsForReconnect()
+    {
+        var s = new LifecycleState(); s.QueueInitialRead(0); s.DeviceChanged(1);
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3001, false));
+        s.Verified(ReceiverState.Absent, s.Generation, 3001);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(6001, false));
+        s.DeviceChanged(7000); Assert.Equal(RecoveryWork.Verify, s.TakeWork(10000, false));
+        s.Verified(ReceiverState.Present, s.Generation, 10000);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(13000, false));
+    }
+    [Fact] public void StartupUnknownRetriesVerificationConservatively()
+    {
+        var s = new LifecycleState(); s.QueueInitialRead(0); s.DeviceChanged(0);
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+        s.Verified(ReceiverState.Unknown, s.Generation, 3000);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(62999, false));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(63000, false));
+        s.Verified(ReceiverState.Present, s.Generation, 63000);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(66000, false));
+    }
+    [Fact] public void StartupWorkDoesNotRunWhileBusyOrAfterShutdown()
+    {
+        var s = new LifecycleState(); s.QueueInitialRead(0);
+        Assert.Equal(RecoveryWork.None, s.TakeWork(0, true));
+        s.Shutdown(); Assert.Equal(RecoveryWork.None, s.TakeWork(1, false));
+    }
 }
