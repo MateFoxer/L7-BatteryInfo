@@ -26,6 +26,7 @@ internal sealed class TrayApplication : ApplicationContext
     public TrayApplication()
     {
         lightTheme = WindowsSystemTheme.IsLight();
+        menu.SetTheme(lightTheme);
         nextThemeCheck = Stopwatch.GetTimestamp() + 15 * Stopwatch.Frequency;
         alerts = AlertSettings.Load(settingsPath);
         menu.SetAlerts(alerts.Enabled);
@@ -45,7 +46,8 @@ internal sealed class TrayApplication : ApplicationContext
         {
             if (Stopwatch.GetTimestamp() >= nextThemeCheck)
             {
-                lightTheme = WindowsSystemTheme.IsLight();
+                bool nextTheme = WindowsSystemTheme.IsLight();
+                if (nextTheme != lightTheme) { lightTheme = nextTheme; menu.SetTheme(lightTheme); }
                 nextThemeCheck = Stopwatch.GetTimestamp() + 15 * Stopwatch.Frequency;
             }
             UpdateDisplay();

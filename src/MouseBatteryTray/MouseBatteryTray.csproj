@@ -5,8 +5,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RepositoryUrl>https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Assets\mouse.png" />
+    <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
     <ProjectReference Include="..\MouseBatteryTray.Hid\MouseBatteryTray.Hid.csproj" />
   </ItemGroup>
 </Project>

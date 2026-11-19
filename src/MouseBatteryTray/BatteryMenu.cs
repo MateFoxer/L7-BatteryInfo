@@ -1,21 +1,23 @@
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
+using System.Reflection;
 
 namespace MouseBatteryTray;
 
-/// <summary>A small reusable tray popup; closing it hides it until the next tray click.</summary>
 internal sealed class BatteryMenu : Form
 {
-    private readonly Button refresh = CreateAction("↻   Refresh battery", "Refresh battery");
-    private readonly Button startup = CreateAction("Start with Windows                       Off", "Start with Windows");
-    private readonly Button alerts = CreateAction("Low battery alerts", "Low battery alerts");
-    private bool alertsEnabled = true;
-    private bool startupAvailable;
-    private readonly Button exit = CreateAction("⏻   Exit", "Exit");
-    private readonly Font titleFont = new("Segoe UI", 9.5f, FontStyle.Bold);
-    private readonly Font secondaryFont = new("Segoe UI", 8.25f);
-    private readonly Font batteryFont = new("Segoe UI", 13, FontStyle.Bold);
-    private readonly Font actionFont = new("Segoe UI", 9.25f);
+    private readonly MenuRow refresh = new("Refresh battery", MenuIcon.Refresh);
+    private readonly MenuRow startup = new("Start with Windows", MenuIcon.Monitor);
+    private readonly MenuRow alerts = new("Low battery alerts", MenuIcon.Bell);
+    private readonly MenuRow about = new("About", MenuIcon.Info);
+    private readonly MenuRow exit = new("Exit", MenuIcon.Power);
+    private readonly Font titleFont = new("Segoe UI", 10, FontStyle.Bold);
+    private readonly Font secondaryFont = new("Segoe UI", 8.5f);
+    private readonly Font batteryFont = new("Segoe UI", 15, FontStyle.Bold);
+    private readonly Image? mouseImage;
+    private bool startupAvailable, light;
     private int? percent;
+    private Form? aboutWindow;
 
     internal event EventHandler? RefreshRequested;
     internal event EventHandler? ExitRequested;
@@ -27,26 +29,20 @@ internal sealed class BatteryMenu : Form
         FormBorderStyle = FormBorderStyle.None;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
-        BackColor = Color.FromArgb(0x25, 0x27, 0x2B);
-        ForeColor = Color.FromArgb(0xF2, 0xF2, 0xF2);
         AutoScaleMode = AutoScaleMode.None;
         KeyPreview = true;
         DoubleBuffered = true;
         AccessibleName = "MCHOSE L7 Ultra+ battery menu";
-        refresh.Font = actionFont;
-        exit.Font = actionFont;
-        startup.Font = actionFont;
-        alerts.Font = actionFont;
-        alerts.Paint += (_, e) => DrawAlertState(e.Graphics);
-        alerts.Click += (_, _) => AlertsRequested?.Invoke(this, EventArgs.Empty);
-        Controls.Add(alerts);
-        startup.Click += (_, _) => StartupRequested?.Invoke(this, EventArgs.Empty);
-        Controls.Add(startup);
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("MouseBatteryTray.Assets.mouse.png");
+        if (stream is not null) { using var loaded = Image.FromStream(stream); mouseImage = new Bitmap(loaded); }
         refresh.Click += (_, _) => RefreshRequested?.Invoke(this, EventArgs.Empty);
+        startup.Click += (_, _) => StartupRequested?.Invoke(this, EventArgs.Empty);
+        alerts.Click += (_, _) => AlertsRequested?.Invoke(this, EventArgs.Empty);
+        about.Click += (_, _) => ShowAbout();
         exit.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
-        Controls.Add(refresh);
-        Controls.Add(exit);
+        Controls.AddRange([refresh, startup, alerts, about, exit]);
         Deactivate += (_, _) => Hide();
+        SetTheme(false);
         ApplyLayout();
     }
 
@@ -54,44 +50,31 @@ internal sealed class BatteryMenu : Form
     internal int? Percent
     {
         get => percent;
-        set
-        {
-            if (percent == value) return;
-            percent = value;
-            AccessibleDescription = value is int p ? $"Battery {p} percent" : "Battery unavailable";
-            Invalidate();
-        }
+        set { if (percent == value) return; percent = value; AccessibleDescription = value is int p ? $"Battery {p} percent" : "Battery unavailable"; Invalidate(); }
+    }
+
+    internal void SetTheme(bool isLight)
+    {
+        light = isLight;
+        BackColor = isLight ? ColorTranslator.FromHtml("#F6F7F9") : ColorTranslator.FromHtml("#101115");
+        ForeColor = isLight ? ColorTranslator.FromHtml("#15171B") : ColorTranslator.FromHtml("#F5F5F5");
+        foreach (MenuRow row in Controls.OfType<MenuRow>()) row.SetTheme(isLight);
+        if (aboutWindow is { IsDisposed: false }) ApplyAboutTheme(aboutWindow);
+        Invalidate();
     }
 
     internal void SetStartup(bool available, bool enabled)
     {
         startupAvailable = available;
         startup.Visible = available;
-        startup.Text = enabled ? "Start with Windows                       On" : "Start with Windows                       Off";
-        startup.ForeColor = enabled ? Color.FromArgb(0x4A, 0xDE, 0x80) : ForeColor;
+        startup.SetStatus(enabled);
         ApplyLayout();
     }
-
-    internal void SetAlerts(bool enabled)
-    {
-        alertsEnabled = enabled;
-        alerts.AccessibleDescription = enabled ? "On" : "Off";
-        alerts.Invalidate();
-    }
-
-    private void DrawAlertState(Graphics graphics)
-    {
-        int inset = (int)Math.Round(8 * DeviceDpi / 96.0);
-        TextRenderer.DrawText(graphics, alertsEnabled ? "On" : "Off", actionFont,
-            new Rectangle(0, 0, alerts.Width - inset, alerts.Height),
-            alertsEnabled ? Color.FromArgb(0x4A, 0xDE, 0x80) : Color.FromArgb(0x9D, 0xA4, 0xAE),
-            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-    }
-
+    internal void SetAlerts(bool enabled) => alerts.SetStatus(enabled);
     internal void SetRefreshing(bool refreshing)
     {
         refresh.Enabled = !refreshing;
-        refresh.Text = refreshing ? "↻   Refreshing…" : "↻   Refresh battery";
+        refresh.Text = refreshing ? "Refreshing…" : "Refresh battery";
     }
 
     internal void ShowAt(Point anchor)
@@ -104,46 +87,33 @@ internal sealed class BatteryMenu : Form
         if (y < area.Top) y = anchor.Y;
         y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - Height));
         Location = new Point(x, y);
-        Show();
-        Activate();
-        (refresh.Enabled ? refresh : exit).Focus();
-    }
-
-    private static Button CreateAction(string text, string accessibleName)
-    {
-        var button = new Button
-        {
-            Text = text,
-            AccessibleName = accessibleName,
-            FlatStyle = FlatStyle.Flat,
-            TextAlign = ContentAlignment.MiddleLeft,
-            UseVisualStyleBackColor = false,
-            BackColor = Color.FromArgb(0x25, 0x27, 0x2B),
-            ForeColor = Color.FromArgb(0xF2, 0xF2, 0xF2),
-            TabStop = true
-        };
-        button.FlatAppearance.BorderSize = 0;
-        button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0x37, 0x39, 0x3E);
-        button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x40, 0x42, 0x48);
-        return button;
+        Show(); Activate();
+        (refresh.Enabled ? refresh : alerts).Focus();
     }
 
     private void ApplyLayout()
     {
-        int Scale(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
-        ClientSize = new Size(Scale(260), Scale(startupAvailable ? 235 : 195));
-        refresh.SetBounds(Scale(12), Scale(68), Scale(236), Scale(38));
-        startup.SetBounds(Scale(12), Scale(108), Scale(236), Scale(38));
-        alerts.SetBounds(Scale(12), Scale(startupAvailable ? 148 : 108), Scale(236), Scale(38));
-        exit.SetBounds(Scale(12), Scale(startupAvailable ? 191 : 151), Scale(236), Scale(36));
-        refresh.Padding = exit.Padding = new Padding(Scale(8), 0, 0, 0);
+        int S(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
+        int count = startupAvailable ? 5 : 4;
+        ClientSize = new Size(S(340), S(119 + count * 37 + 19));
+        int y = 116;
+        foreach (var row in new[] { refresh, startup, alerts, about, exit })
+        {
+            if (row == startup && !startupAvailable) continue;
+            if (row == about) y += 8;
+            row.SetBounds(S(12), S(y), S(316), S(36));
+            y += 37;
+        }
+        using var path = Rounded(new Rectangle(0, 0, Width, Height), S(18));
+        var previous = Region;
+        Region = new Region(path);
+        previous?.Dispose();
         Invalidate();
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
-        base.OnDpiChanged(e);
-        ApplyLayout();
+        base.OnDpiChanged(e); ApplyLayout();
         Rectangle area = Screen.FromRectangle(Bounds).WorkingArea;
         Location = new Point(Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - Width)),
             Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height)));
@@ -152,55 +122,100 @@ internal sealed class BatteryMenu : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        int Scale(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
-        Color primary = Color.FromArgb(0xF2, 0xF2, 0xF2);
-        Color secondary = Color.FromArgb(0x9D, 0xA4, 0xAE);
-        int rgb = TrayIconColor.ForReading(percent, percent is null);
+        var g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
+        int S(int n) => (int)Math.Round(n * DeviceDpi / 96.0);
+        var primary = ForeColor;
+        var secondary = ColorTranslator.FromHtml(light ? "#717782" : "#9699A1");
+        int rgb = TrayIconColor.ForReading(percent, percent is null, light);
         Color battery = Color.FromArgb((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255);
-        var left = new Rectangle(Scale(12), Scale(10), Width - Scale(90), Scale(24));
-        TextRenderer.DrawText(e.Graphics, "MCHOSE L7 Ultra+", titleFont, left, primary,
+        TextRenderer.DrawText(g, "MCHOSE L7 Ultra+", titleFont, new Rectangle(S(18), S(16), S(190), S(25)), primary,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        TextRenderer.DrawText(e.Graphics, "2.4 GHz wireless", secondaryFont,
-            new Rectangle(Scale(12), Scale(34), Width - Scale(90), Scale(18)), secondary,
+        TextRenderer.DrawText(g, "2.4 GHz wireless", secondaryFont, new Rectangle(S(18), S(43), S(185), S(20)), secondary,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(e.Graphics, percent is int p ? $"{p}%" : "—", batteryFont,
-            new Rectangle(Width - Scale(76), Scale(12), Scale(64), Scale(32)), battery,
-            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        // A missing or stale reading has no fill: Percent is null in both cases.
-        var track = new Rectangle(Scale(12), Scale(55), Width - Scale(24), Math.Max(1, Scale(4)));
-        using (var trackBrush = new SolidBrush(Color.FromArgb(0x41, 0x44, 0x49)))
-            e.Graphics.FillRectangle(trackBrush, track);
-        if (percent is int level)
+        if (mouseImage is not null)
         {
-            using var fillBrush = new SolidBrush(battery);
-            e.Graphics.FillRectangle(fillBrush, track.X, track.Y, track.Width * level / 100, track.Height);
+            float scale = Math.Min((float)S(112) / mouseImage.Width, (float)S(56) / mouseImage.Height);
+            float w = mouseImage.Width * scale, h = mouseImage.Height * scale;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.DrawImage(mouseImage, new RectangleF(S(211) + (S(112) - w) / 2, S(5), w, h));
         }
-        using var pen = new Pen(Color.FromArgb(0x41, 0x44, 0x49));
-        e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-        e.Graphics.DrawLine(pen, Scale(12), Scale(62), Width - Scale(12), Scale(62));
-        e.Graphics.DrawLine(pen, Scale(12), Scale(startupAvailable ? 188 : 148), Width - Scale(12), Scale(startupAvailable ? 188 : 148));
+        TextRenderer.DrawText(g, percent is int p ? $"{p}%" : "—", batteryFont,
+            new Rectangle(S(230), S(64), S(92), S(30)), battery,
+            TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        var track = new Rectangle(S(18), S(98), S(304), Math.Max(2, S(5)));
+        FillPill(g, track, light ? Color.FromArgb(215, 219, 226) : Color.FromArgb(54, 56, 61));
+        if (percent is int level) FillPill(g, new Rectangle(track.X, track.Y, track.Width * level / 100, track.Height), battery);
+        using var divider = new Pen(light ? Color.FromArgb(214, 217, 223) : Color.FromArgb(65, 67, 72));
+        g.DrawLine(divider, S(18), S(111), Width - S(18), S(111));
+        int secondDivider = 116 + (startupAvailable ? 3 : 2) * 37 + 3;
+        g.DrawLine(divider, S(18), S(secondDivider), Width - S(18), S(secondDivider));
+        using var borderPath = Rounded(new Rectangle(0, 0, Width - 1, Height - 1), S(18));
+        using var borderBrush = new LinearGradientBrush(ClientRectangle, light ? Color.FromArgb(224, 227, 233) : Color.FromArgb(165, 168, 176), light ? Color.FromArgb(184, 189, 198) : Color.FromArgb(48, 51, 59), 90);
+        using var border = new Pen(borderBrush, Math.Max(1, S(1)));
+        g.DrawPath(border, borderPath);
     }
 
+    private static void FillPill(Graphics graphics, Rectangle bounds, Color color)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0) return;
+        using var brush = new SolidBrush(color);
+        if (bounds.Width < 2 || bounds.Height < 2) { graphics.FillRectangle(brush, bounds); return; }
+        using var path = Rounded(bounds, Math.Min(bounds.Width, bounds.Height) / 2);
+        graphics.FillPath(brush, path);
+    }
+    internal static GraphicsPath Rounded(Rectangle bounds, int radius)
+    {
+        var path = new GraphicsPath(); int d = Math.Max(2, radius * 2);
+        path.AddArc(bounds.Left, bounds.Top, d, d, 180, 90);
+        path.AddArc(bounds.Right - d, bounds.Top, d, d, 270, 90);
+        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+        path.AddArc(bounds.Left, bounds.Bottom - d, d, d, 90, 90);
+        path.CloseFigure(); return path;
+    }
+
+    private void ShowAbout()
+    {
+        Hide();
+        if (aboutWindow is { IsDisposed: false }) { aboutWindow.Activate(); return; }
+        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown";
+        var dialog = new Form { Text = "About MouseBatteryTray", ClientSize = new Size(350, 190), FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false, StartPosition = FormStartPosition.CenterScreen };
+        var label = new Label { Text = $"MouseBatteryTray\nVersion {version}\n\nMCHOSE L7 Ultra+ battery monitor\nWindows 10/11\n\nIndependent and experimental project.", AutoSize = false, Location = new Point(20, 18), Size = new Size(310, 125) };
+        var close = new Button { Text = "Close", Location = new Point(240, 150), Size = new Size(90, 28), DialogResult = DialogResult.Cancel };
+        close.Click += (_, _) => dialog.Close();
+        dialog.Controls.AddRange([label, close]); dialog.CancelButton = close;
+        string? repository = Assembly.GetExecutingAssembly().GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "RepositoryUrl")?.Value;
+        if (Uri.TryCreate(repository, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+        {
+            var link = new LinkLabel { Text = "GitHub project", Location = new Point(20, 154), AutoSize = true };
+            link.LinkClicked += (_, _) =>
+            {
+                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
+                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
+            };
+            dialog.Controls.Add(link);
+        }
+        aboutWindow = dialog; ApplyAboutTheme(dialog); dialog.FormClosed += (_, _) => { aboutWindow = null; dialog.Dispose(); };
+        dialog.Show();
+    }
+    private void ApplyAboutTheme(Form dialog)
+    {
+        dialog.BackColor = BackColor; dialog.ForeColor = ForeColor;
+        foreach (Control control in dialog.Controls)
+        {
+            control.BackColor = BackColor; control.ForeColor = ForeColor;
+            if (control is LinkLabel link) link.LinkColor = light ? Color.FromArgb(30, 140, 60) : Color.FromArgb(74, 222, 128);
+        }
+    }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {
         if (keyData == Keys.Escape) { Hide(); return true; }
-        if (keyData is Keys.Up or Keys.Down)
-        {
-            SelectNextControl(ActiveControl, keyData == Keys.Down, true, true, true);
-            return true;
-        }
+        if (keyData is Keys.Up or Keys.Down) { SelectNextControl(ActiveControl, keyData == Keys.Down, true, true, true); return true; }
         return base.ProcessCmdKey(ref msg, keyData);
     }
-
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
-        {
-            titleFont.Dispose();
-            secondaryFont.Dispose();
-            batteryFont.Dispose();
-            actionFont.Dispose();
-        }
+        if (disposing) { aboutWindow?.Dispose(); mouseImage?.Dispose(); titleFont.Dispose(); secondaryFont.Dispose(); batteryFont.Dispose(); }
         base.Dispose(disposing);
     }
 }
