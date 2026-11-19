@@ -9,7 +9,7 @@ internal sealed class AboutWindow : Form
     private readonly Font bodyFont = new("Segoe UI", 9);
     private readonly Font valueFont = new("Segoe UI", 9, FontStyle.Bold);
     private readonly Button repositoryLink = new() { Text = "GitHub project", FlatStyle = FlatStyle.Flat, TextAlign = ContentAlignment.MiddleLeft, AccessibleName = "Open GitHub project" };
-    private readonly Button close = new() { Text = "Close", FlatStyle = FlatStyle.Flat, AccessibleName = "Close" };
+    private readonly RoundedCloseButton close = new() { Text = "Close", AccessibleName = "Close" };
     private readonly string version;
     private bool light;
 
@@ -38,6 +38,7 @@ internal sealed class AboutWindow : Form
         repositoryLink.FlatAppearance.MouseOverBackColor = light ? Color.FromArgb(230, 233, 238) : Color.FromArgb(40, 42, 48);
         close.BackColor = light ? Color.FromArgb(33, 35, 41) : Color.FromArgb(240, 242, 245);
         close.ForeColor = light ? Color.White : Color.FromArgb(21, 23, 27);
+        close.SurfaceColor = BackColor;
         Invalidate();
     }
 
@@ -49,8 +50,7 @@ internal sealed class AboutWindow : Form
         repositoryLink.Padding = new Padding(S(22), 0, 0, 0);
         repositoryLink.SetBounds(S(14), S(210), S(155), S(28));
         close.SetBounds(S(310), S(210), S(72), S(28));
-        using var closePath = BatteryMenu.Rounded(new Rectangle(0, 0, close.Width, close.Height), S(8));
-        var oldClose = close.Region; close.Region = new Region(closePath); oldClose?.Dispose();
+
         using var path = BatteryMenu.Rounded(new Rectangle(0, 0, Width, Height), S(18));
         var old = Region; Region = new Region(path); old?.Dispose();
     }
@@ -81,7 +81,9 @@ internal sealed class AboutWindow : Form
         TextAt("MateFoxer", valueFont, new Rectangle(S(155), S(136), S(222), S(23)), ForeColor, true);
         TextAt("Independent project. Not affiliated with MCHOSE.", bodyFont, new Rectangle(S(23), S(163), S(354), S(20)), secondary);
         using var line = new Pen(divider); foreach (int y in new[] { 64, 126, 198 }) g.DrawLine(line, S(18), S(y), Width - S(18), S(y));
-        using var shape = BatteryMenu.Rounded(new Rectangle(0, 0, Width - 1, Height - 1), S(18));
+        // A window Region clips to whole pixels; inset the antialiased stroke inside it.
+        int inset = Math.Max(1, S(1));
+        using var shape = BatteryMenu.Rounded(new Rectangle(inset, inset, Width - 2 * inset - 1, Height - 2 * inset - 1), Math.Max(1, S(18) - inset));
         using var gradient = new LinearGradientBrush(ClientRectangle, light ? Color.FromArgb(224, 227, 233) : Color.FromArgb(165, 168, 176), light ? Color.FromArgb(184, 189, 198) : Color.FromArgb(48, 51, 59), 90);
         using var border = new Pen(gradient, Math.Max(1, S(1))); g.DrawPath(border, shape);
     }
@@ -122,5 +124,42 @@ internal sealed class AboutWindow : Form
     {
         if (disposing) { titleFont.Dispose(); bodyFont.Dispose(); valueFont.Dispose(); }
         base.Dispose(disposing);
+    }
+}
+
+/// <summary>Painted button retains native Button keyboard and accessibility behavior.</summary>
+internal sealed class RoundedCloseButton : Button
+{
+    private bool hovered, pressed;
+    [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    internal Color SurfaceColor { get; set; }
+
+    internal RoundedCloseButton()
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+        FlatStyle = FlatStyle.Flat;
+    }
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hovered = true; Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hovered = false; pressed = false; Invalidate(); }
+    protected override void OnMouseDown(MouseEventArgs e) { base.OnMouseDown(e); if (e.Button == MouseButtons.Left) { pressed = true; Invalidate(); } }
+    protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); pressed = false; Invalidate(); }
+    protected override void OnKeyDown(KeyEventArgs e) { base.OnKeyDown(e); if (e.KeyCode is Keys.Space or Keys.Enter) { pressed = true; Invalidate(); } }
+    protected override void OnKeyUp(KeyEventArgs e) { base.OnKeyUp(e); if (e.KeyCode is Keys.Space or Keys.Enter) { pressed = false; Invalidate(); } }
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); pressed = false; Invalidate(); }
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.Clear(SurfaceColor);
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        int inset = Math.Max(1, (int)Math.Round(DeviceDpi / 96.0));
+        int radius = Math.Max(2, (int)Math.Round(8 * DeviceDpi / 96.0));
+        using var shape = BatteryMenu.Rounded(new Rectangle(inset, inset, Width - 2 * inset - 1, Height - 2 * inset - 1), radius);
+        Color fill = pressed ? ControlPaint.Dark(BackColor, 0.18f) : hovered ? ControlPaint.Dark(BackColor, 0.08f) : BackColor;
+        using (var brush = new SolidBrush(fill)) g.FillPath(brush, shape);
+        TextRenderer.DrawText(g, Text, Font, ClientRectangle, ForeColor,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+        if (Focused && ShowFocusCues)
+            ControlPaint.DrawFocusRectangle(g, Rectangle.Inflate(ClientRectangle, -4 * inset, -4 * inset), ForeColor, fill);
     }
 }
