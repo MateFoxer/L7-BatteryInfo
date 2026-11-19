@@ -5,7 +5,7 @@ internal static class StartupPath
     internal static bool IsStable(string? path, string tempPath, bool exists)
     {
         if (!exists || string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path) ||
-            !string.Equals(Path.GetFileName(path), "MouseBatteryTray.exe", StringComparison.OrdinalIgnoreCase)) return false;
+            !string.Equals(Path.GetFileName(path), "L7-BatteryInfo.exe", StringComparison.OrdinalIgnoreCase)) return false;
         try
         {
             string full = Path.GetFullPath(path);
@@ -16,6 +16,10 @@ internal static class StartupPath
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return false; }
     }
+
+    // Reuse the legacy value name and refuse to replace any other command.
+    internal static bool Conflicts(object? value, string executable) =>
+        value is not null && (value is not string command || !Matches(command, executable));
 
     internal static string Command(string path) => $"\"{Path.GetFullPath(path)}\"";
 

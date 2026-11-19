@@ -113,7 +113,7 @@ internal sealed class TrayApplication : ApplicationContext
     {
         bool previous = alerts.Enabled;
         alerts.Enabled = !previous;
-        if (!alerts.Save(settingsPath)) { alerts.Enabled = previous; MessageBox.Show("Alert preference could not be saved.", "MouseBatteryTray"); }
+        if (!alerts.Save(settingsPath)) { alerts.Enabled = previous; MessageBox.Show("Alert preference could not be saved.", "L7-BatteryInfo"); }
         menu.SetAlerts(alerts.Enabled);
     }
 
@@ -141,7 +141,7 @@ internal sealed class TrayApplication : ApplicationContext
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException or InvalidOperationException)
         {
-            MessageBox.Show("Windows startup could not be updated. An existing entry may point to another application.", "MouseBatteryTray");
+            MessageBox.Show("Windows startup could not be updated. An existing entry may point to another application.", "L7-BatteryInfo");
         }
     }
     private async void OnFirstIdle(object? sender, EventArgs e)

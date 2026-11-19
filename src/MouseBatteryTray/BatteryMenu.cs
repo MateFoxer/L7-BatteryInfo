@@ -17,7 +17,7 @@ internal sealed class BatteryMenu : Form
     private readonly Image? mouseImage;
     private bool startupAvailable, light;
     private int? percent;
-    private Form? aboutWindow;
+    private AboutWindow? aboutWindow;
 
     internal event EventHandler? RefreshRequested;
     internal event EventHandler? ExitRequested;
@@ -59,7 +59,7 @@ internal sealed class BatteryMenu : Form
         BackColor = isLight ? ColorTranslator.FromHtml("#F6F7F9") : ColorTranslator.FromHtml("#101115");
         ForeColor = isLight ? ColorTranslator.FromHtml("#15171B") : ColorTranslator.FromHtml("#F5F5F5");
         foreach (MenuRow row in Controls.OfType<MenuRow>()) row.SetTheme(isLight);
-        if (aboutWindow is { IsDisposed: false }) ApplyAboutTheme(aboutWindow);
+        if (aboutWindow is { IsDisposed: false }) aboutWindow.SetTheme(isLight);
         Invalidate();
     }
 
@@ -177,35 +177,10 @@ internal sealed class BatteryMenu : Form
     {
         Hide();
         if (aboutWindow is { IsDisposed: false }) { aboutWindow.Activate(); return; }
-        var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown";
-        var dialog = new Form { Text = "About MouseBatteryTray", ClientSize = new Size(350, 190), FormBorderStyle = FormBorderStyle.FixedDialog, MaximizeBox = false, MinimizeBox = false, ShowInTaskbar = false, StartPosition = FormStartPosition.CenterScreen };
-        var label = new Label { Text = $"MouseBatteryTray\nVersion {version}\n\nMCHOSE L7 Ultra+ battery monitor\nWindows 10/11\n\nIndependent and experimental project.", AutoSize = false, Location = new Point(20, 18), Size = new Size(310, 125) };
-        var close = new Button { Text = "Close", Location = new Point(240, 150), Size = new Size(90, 28), DialogResult = DialogResult.Cancel };
-        close.Click += (_, _) => dialog.Close();
-        dialog.Controls.AddRange([label, close]); dialog.CancelButton = close;
-        string? repository = Assembly.GetExecutingAssembly().GetCustomAttributes<AssemblyMetadataAttribute>()
-            .FirstOrDefault(attribute => attribute.Key == "RepositoryUrl")?.Value;
-        if (Uri.TryCreate(repository, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
-        {
-            var link = new LinkLabel { Text = "GitHub project", Location = new Point(20, 154), AutoSize = true };
-            link.LinkClicked += (_, _) =>
-            {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
-                catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) { }
-            };
-            dialog.Controls.Add(link);
-        }
-        aboutWindow = dialog; ApplyAboutTheme(dialog); dialog.FormClosed += (_, _) => { aboutWindow = null; dialog.Dispose(); };
+        var dialog = new AboutWindow(light);
+        aboutWindow = dialog;
+        dialog.FormClosed += (_, _) => { aboutWindow = null; dialog.Dispose(); };
         dialog.Show();
-    }
-    private void ApplyAboutTheme(Form dialog)
-    {
-        dialog.BackColor = BackColor; dialog.ForeColor = ForeColor;
-        foreach (Control control in dialog.Controls)
-        {
-            control.BackColor = BackColor; control.ForeColor = ForeColor;
-            if (control is LinkLabel link) link.LinkColor = light ? Color.FromArgb(30, 140, 60) : Color.FromArgb(74, 222, 128);
-        }
     }
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
     {

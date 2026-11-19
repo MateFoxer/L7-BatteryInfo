@@ -1,6 +1,6 @@
-# MCHOSE-L7-Battery-Tray
+# L7-BatteryInfo
 
-MouseBatteryTray is a learning project for a lightweight Windows mouse-battery tray application. The Windows tray application provides an experimental battery monitor.
+L7-BatteryInfo is a learning project for a lightweight Windows mouse-battery tray application. The Windows tray application provides an experimental battery monitor.
 
 ## Requirements
 
@@ -50,7 +50,7 @@ The app reads the battery on startup and every 60 seconds. Right-click its tray 
 dotnet publish src/MouseBatteryTray/MouseBatteryTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o src/MouseBatteryTray/bin/portable
 ```
 
-Copy `MouseBatteryTray.exe` to a stable location such as `%LOCALAPPDATA%\Programs\MouseBatteryTray`. In that published copy, use **Start with Windows** in the popup to enable or disable sign-in startup. It is hidden for build and temporary directories. Startup uses the current user's Run key and refuses to replace a conflicting entry. No SDK is required to run the self-contained executable.
+Copy `L7-BatteryInfo.exe` to a stable location such as `%LOCALAPPDATA%\Programs\L7-BatteryInfo`. In that published copy, use **Start with Windows** in the popup to enable or disable sign-in startup. It is hidden for build and temporary directories. Startup uses the current user's Run key and refuses to replace a conflicting entry. No SDK is required to run the self-contained executable.
 
 To update, exit the running application, replace the executable at the same stable path, and restart it. Keeping the path preserves the startup entry. The application does not move itself or alter startup without interaction.
 
@@ -59,3 +59,5 @@ To update, exit the running application, replace the executable at the same stab
 Resume and HID device-list changes invalidate the previous reading and trigger a delayed recovery check. Notifications for unrelated HID devices may also mark the reading stale because the event does not identify the changed device. An inaccessible descriptor is treated as unknown and retried conservatively; unplug/replug and sleep behavior still require manual hardware QA. The receiver may return a cached, valid-looking response, so freshness and battery accuracy cannot be guaranteed solely by the protocol. Low-battery alerts depend on Windows notification settings and persist their preference and suppression state locally.
 
 See [manual release QA](docs/release-qa.md) for the unexecuted Windows 10 checklist.
+
+An existing MouseBatteryTray startup entry is not silently removed or overwritten. Disable the legacy entry before enabling startup for L7-BatteryInfo.

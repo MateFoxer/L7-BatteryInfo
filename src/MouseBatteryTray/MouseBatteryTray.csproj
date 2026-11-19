@@ -1,6 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <AssemblyName>L7-BatteryInfo</AssemblyName>
+    <RootNamespace>MouseBatteryTray</RootNamespace>
+    <Version>0.1.0</Version>
+    <Product>L7-BatteryInfo</Product>
+    <Description>L7-BatteryInfo wireless mouse battery monitor</Description>
+    <AssemblyTitle>L7-BatteryInfo wireless mouse battery monitor</AssemblyTitle>
+    <Company>MateFoxer</Company>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>

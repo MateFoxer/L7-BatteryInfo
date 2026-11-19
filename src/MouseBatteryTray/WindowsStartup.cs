@@ -26,9 +26,7 @@ internal static class WindowsStartup
     {
         using var key = Registry.CurrentUser.CreateSubKey(KeyPath, true) ?? throw new InvalidOperationException("Startup settings are unavailable.");
         object? value = key.GetValue(ValueName);
-        if (value is not null && value is not string) throw new InvalidOperationException("The startup entry is not a command string.");
-        var existing = value as string;
-        if (existing is not null && !StartupPath.Matches(existing, executable))
+        if (StartupPath.Conflicts(value, executable))
             throw new InvalidOperationException("An existing startup entry belongs to a different executable.");
         if (enabled) key.SetValue(ValueName, StartupPath.Command(executable), RegistryValueKind.String);
         else key.DeleteValue(ValueName, false);
