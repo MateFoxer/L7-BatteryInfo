@@ -200,9 +200,9 @@ internal sealed class TrayApplication : ApplicationContext
     {
         bool stale = last is not null && (lifecycle.Stale || failed || Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120));
         menu.Percent = stale || lifecycle.Receiver == ReceiverState.Absent ? null : last?.Percent;
-        var tooltip = last is null || lifecycle.Receiver == ReceiverState.Absent
-            ? $"MCHOSE L7 Ultra+\nBattery: unavailable\nStatus: {(busy ? "Reading" : failed ? "Unavailable / disconnected" : "Waiting")}"
-            : $"MCHOSE L7 Ultra+\nBattery: {last.Percent}%\nStatus: {(stale ? "Stale" : "Recent candidate reading")}";
+        var tooltip = menu.Percent is int percent
+            ? $"L7-BatteryInfo\nMCHOSE L7 Ultra+\nBattery: {percent}%"
+            : "L7-BatteryInfo\nMCHOSE L7 Ultra+\nBattery: unavailable";
         tray.Text = tooltip.Length <= 127 ? tooltip : tooltip[..127];
         var appearance = (Percent: lifecycle.Receiver == ReceiverState.Absent ? null : last?.Percent, Muted: last is null || stale || lifecycle.Receiver == ReceiverState.Absent, Light: lightTheme);
         if (rendered != appearance)

@@ -42,6 +42,7 @@ internal sealed class BatteryMenu : Form
         exit.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
         Controls.AddRange([refresh, startup, alerts, about, exit]);
         Deactivate += (_, _) => Hide();
+        VisibleChanged += (_, _) => { if (!Visible) TopMost = false; };
         SetTheme(false);
         ApplyLayout();
     }
@@ -87,7 +88,10 @@ internal sealed class BatteryMenu : Form
         if (y < area.Top) y = anchor.Y;
         y = Math.Clamp(y, area.Top, Math.Max(area.Top, area.Bottom - Height));
         Location = new Point(x, y);
-        Show(); Activate();
+        // The notification overflow is topmost; elevate only while this popup is visible.
+        TopMost = true;
+        Show();
+        Activate();
         (refresh.Enabled ? refresh : alerts).Focus();
     }
 
