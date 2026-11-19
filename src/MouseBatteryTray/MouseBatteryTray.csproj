@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <AssemblyName>L7-BatteryInfo</AssemblyName>
+    <ApplicationIcon>Assets\L7-BatteryInfo.ico</ApplicationIcon>
     <RootNamespace>MouseBatteryTray</RootNamespace>
     <Version>0.1.0</Version>
     <Product>L7-BatteryInfo</Product>
