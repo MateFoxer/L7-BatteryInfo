@@ -1,27 +1,25 @@
 # L7-BatteryInfo
 
-**Battery monitoring, without the clutter.**
-
 L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windows notification area, with a compact menu for refresh, alerts and startup settings.
 
-![Windows 10 tested](https://img.shields.io/badge/Windows_10-tested-555555) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-398b62)
+![Windows 10/11](https://img.shields.io/badge/Windows_10-tested-555555) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-398b62)
 
 **[Download v0.1.0 for Windows x64](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip)** · [Release notes](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/tag/v0.1.0)
 
-## At a glance
+## Features
 
-- **Always within reach** — a numeric battery indicator in the system tray and a manual refresh action.
+- **Info on the taskbar** — a numeric battery indicator in the system tray and a manual refresh action.
 - **Automatic monitoring** — requests a reading at startup and normally refreshes every 60 seconds.
 - **Low-battery alerts** — optional Windows notifications at 20% and 10%.
-- **At home on Windows** — optional startup at sign-in, light/dark theme adaptation, and recovery attempts after sleep or receiver reconnection.
+- **Integrated Windows features** — optional startup at sign-in, light/dark theme adaptation, and recovery attempts after sleep or receiver reconnection.
 
 ## Installation
 
 The portable release is self-contained for Windows x64; no separate .NET runtime installation is needed.
 
 1. [Download the v0.1.0 ZIP](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip).
-2. Extract it to a permanent folder, for example `%LOCALAPPDATA%\Programs\L7-BatteryInfo`.
-3. Connect the 2.4 GHz receiver and run `L7-BatteryInfo.exe`.
+2. Extract it to a folder.
+3. Connect the mouse and run `L7-BatteryInfo.exe`.
 4. Find the battery indicator in the Windows notification area; it may be under **Show hidden icons** (`^`).
 5. Optionally, right-click the icon and enable **Start with Windows**.
 
@@ -32,8 +30,8 @@ To update, exit the app and replace the executable in the same folder before res
 | | Supported setup |
 | --- | --- |
 | Mouse | MCHOSE L7 Ultra+ |
-| Connection | Supported 2.4 GHz USB receiver (VID `5253`, PID `1020`) |
-| Windows | Windows 10 tested; Windows 11 not manually verified |
+| Connection | Supported 2.4 GHz USB receiver |
+| Windows | Windows 10/11|
 | Other models | Not verified |
 
 ## Troubleshooting
@@ -45,7 +43,7 @@ To update, exit the app and replace the executable in the same folder before res
 
 ## Limitations
 
-The battery protocol is experimental. A receiver can return a cached, valid-looking response, so freshness and exact accuracy cannot be guaranteed. Windows controls notification delivery, and native HID calls can block. Sleep/wake and reconnect behavior need further hardware testing; see the [manual QA checklist](docs/release-qa.md).
+The battery protocol is experimental. A receiver can return a cached, valid-looking response, so freshness and exact accuracy cannot be guaranteed. Windows controls notification delivery, and native HID calls can block. Sleep/wake and reconnect behavior need further hardware testing.
 
 ## Development
 

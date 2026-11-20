@@ -1,6 +1,6 @@
 # Development
 
-Windows 10 is the tested environment; Windows 11 has not been manually verified. Development requires the .NET 10 SDK. The self-contained portable executable does not. Administrator privileges should not normally be needed, though individual HID descriptors may be inaccessible.
+Development requires the .NET 10 SDK. The self-contained portable executable does not. Administrator privileges should not normally be needed, though individual HID descriptors may be inaccessible.
 
 ## Build and tests
 
