@@ -2,7 +2,7 @@
 
 L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windows notification area, with a compact menu for refresh, alerts and startup settings.
 
-![Windows 10/11](https://img.shields.io/badge/Windows_10-tested-555555) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-398b62)
+![Windows 10/11](https://img.shields.io/badge/Windows-10%20%2F%2011-555555?logo=windows11&logoColor=white) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-398b62)
 
 **[Download v0.1.0 for Windows x64](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip)** · [Release notes](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/tag/v0.1.0)
 
