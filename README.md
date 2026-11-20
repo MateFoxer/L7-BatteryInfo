@@ -1,63 +1,62 @@
 # L7-BatteryInfo
 
-L7-BatteryInfo is a learning project for a lightweight Windows mouse-battery tray application. The Windows tray application provides an experimental battery monitor.
+A lightweight Windows tray utility for monitoring the battery of the MCHOSE L7 Ultra+ wireless mouse.
 
-## Requirements
+![Windows 10](https://img.shields.io/badge/Windows-10%20tested-0078D4) ![.NET 10](https://img.shields.io/badge/C%23%20%2F%20.NET-10-512BD4) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-4ADE80)
 
-Windows 10 is the tested environment; Windows 11 compatibility has not been manually tested. The .NET 10 SDK is needed for development, not for the self-contained portable EXE. Connect the 2.4 GHz receiver before scanning. Administrator privileges should not normally be needed; individual descriptors may be unavailable.
+## Download
 
-## Build and scan
+**[Download L7-BatteryInfo v0.1.0](https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray/releases/tag/v0.1.0)**
+
+Choose the Windows x64 portable executable from the release. It is self-contained and does not require a .NET installation.
+
+## Features
+
+- Battery percentage in the notification area, with a manual refresh action.
+- Automatic monitoring, normally every 60 seconds, and recovery attempts after sleep or receiver changes.
+- Optional low-battery alerts, with the preference saved locally.
+- Optional startup at Windows sign-in and light/dark theme support.
+
+## Quick installation
+
+1. Download the Windows x64 executable from the release page.
+2. Move it to a stable location, such as `%LOCALAPPDATA%\Programs\L7-BatteryInfo\L7-BatteryInfo.exe`.
+3. Connect the mouse's 2.4 GHz receiver and run the executable. The icon may appear under the taskbar's hidden icons.
+4. Right-click the tray icon to refresh the reading or exit.
+
+To update the executable, exit the application first, replace the file at the same location, and start it again.
+
+## Supported hardware and compatibility
+
+The project targets the **MCHOSE L7 Ultra+** using its 2.4 GHz USB receiver (VID `5253`, PID `1020`). Other models and receivers are not verified. Windows 10 has been tested with this setup; Windows 11 has not been manually verified.
+
+This is an independent project and is not affiliated with MCHOSE.
+
+## Start with Windows
+
+In the tray menu, use **Start with Windows** to enable or disable startup for the current user. The option is available for a standalone executable in a stable location; it is hidden for development, build, and temporary paths. No administrator privileges are normally required.
+
+The application will not silently replace a conflicting startup entry. If a legacy MouseBatteryTray entry exists, disable it before enabling the new one.
+
+## Known limitations
+
+- The battery protocol is experimental. A receiver may return a cached but valid-looking response, so neither freshness nor exact accuracy can be guaranteed. Compare readings with MCHOSE HUB when needed.
+- A sleeping mouse or an unavailable receiver may prevent a reading. Native HID calls can block, and recovery after sleep or reconnect still needs further hardware testing.
+- Windows controls whether low-battery notifications are shown. Unrelated HID device changes may temporarily invalidate a reading.
+- Manual release testing is incomplete; see the [release QA checklist](docs/release-qa.md).
+
+## Build from source
+
+Install the .NET 10 SDK on Windows, then run:
 
 ```powershell
 dotnet restore
 dotnet build
-dotnet run --project tools/MouseBatteryTray.DeviceScanner
-# Show all HID interfaces:
-dotnet run --project tools/MouseBatteryTray.DeviceScanner -- --all
-```
-
-Candidates match VID `0x5253` or `0x3837`, or contain `MCHOSE` in an available manufacturer/product string. These are discovery hints, not proof of the mouse model or compatibility. The L7 Ultra+ battery protocol is not verified. The scanner assumes no PID; the experimental probe and app target receiver PID `0x1020`. One receiver can expose multiple HID interfaces. Interface numbers and usages may be unavailable, and report lengths include the report ID byte. The scanner does not print serial numbers or full device paths. Review output before sharing, especially when using `--all`.
-
-The scanner enumerates HID interfaces and reads descriptor information only; it sends no HID output or feature reports and does not change device settings. HidSharp may enumerate non-USB HID transports too, depending on the operating system; the scanner does not claim to verify the transport.
-
-## Battery probe
-
-The experimental one-shot probe targets only the `5253:1020` receiver's `FF01:0001` collection. The battery protocol has not been verified on the L7 Ultra+; a valid-looking response can be stale. The dry run reads descriptors only:
-
-```powershell
-dotnet run --project tools/MouseBatteryTray.BatteryProbe -- --dry-run
-```
-
-To explicitly send one status request and read one feature response:
-
-```powershell
-dotnet run --project tools/MouseBatteryTray.BatteryProbe -- --read-battery
-```
-
-The command does not retry or poll. HidSharp's synchronous feature calls may block and are not cancelled by a software timeout. Run `dotnet test` for synthetic tests, which do not access hardware.
-
-## Windows tray app
-
-```powershell
 dotnet run --project src/MouseBatteryTray
 ```
 
-The app reads the battery on startup and every 60 seconds. Right-click its tray icon for **Refresh battery** and **Exit**. Tested on Windows 10 with the MCHOSE L7 Ultra+ 2.4 GHz receiver; Windows 11 compatibility has not been manually tested. Battery values are candidates: cached responses can appear fresh, and other devices are not verified.
+See [development documentation](docs/development.md) for tests, portable publishing, HID discovery, and the experimental battery probe.
 
-## Portable executable and startup
+## Development and licensing
 
-```powershell
-dotnet publish src/MouseBatteryTray/MouseBatteryTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o src/MouseBatteryTray/bin/portable
-```
-
-Copy `L7-BatteryInfo.exe` to a stable location such as `%LOCALAPPDATA%\Programs\L7-BatteryInfo`. In that published copy, use **Start with Windows** in the popup to enable or disable sign-in startup. It is hidden for build and temporary directories. Startup uses the current user's Run key and refuses to replace a conflicting entry. No SDK is required to run the self-contained executable.
-
-To update, exit the running application, replace the executable at the same stable path, and restart it. Keeping the path preserves the startup entry. The application does not move itself or alter startup without interaction.
-
-## Recovery and limitations
-
-Resume and HID device-list changes invalidate the previous reading and trigger a delayed recovery check. Notifications for unrelated HID devices may also mark the reading stale because the event does not identify the changed device. An inaccessible descriptor is treated as unknown and retried conservatively; unplug/replug and sleep behavior still require manual hardware QA. The receiver may return a cached, valid-looking response, so freshness and battery accuracy cannot be guaranteed solely by the protocol. Low-battery alerts depend on Windows notification settings and persist their preference and suppression state locally.
-
-See [manual release QA](docs/release-qa.md) for the unexecuted Windows 10 checklist.
-
-An existing MouseBatteryTray startup entry is not silently removed or overwritten. Disable the legacy entry before enabling startup for L7-BatteryInfo.
+Developed by MateFoxer. This repository does not currently include a project license; do not assume permission to redistribute or reuse its contents. Third-party dependencies and assets may have their own terms.
