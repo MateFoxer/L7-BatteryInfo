@@ -6,7 +6,7 @@
 *.user
 *.suo
 TestResults/
-
+tests/
 
 # Local release builds
 /publish/
