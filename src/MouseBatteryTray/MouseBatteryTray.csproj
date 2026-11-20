@@ -13,7 +13,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RepositoryUrl>https://github.com/MateFoxer/MCHOSE-L7-Battery-Tray</RepositoryUrl>
+    <RepositoryUrl>https://github.com/MateFoxer/L7-BatteryInfo</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="Assets\mouse.png" />
