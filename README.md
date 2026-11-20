@@ -6,12 +6,26 @@ L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windo
 
 **[Download v0.1.0 for Windows x64](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip)** · [Release notes](https://github.com/MateFoxer/L7-BatteryInfo/releases/tag/v0.1.0)
 
+## Application Preview
+
+<table>
+  <tr>
+    <td align="center"><sub>Dark Mode</sub><br><img src="docs/screenshots/dark-mode.png" alt="L7-BatteryInfo popup in dark mode" width="340"></td>
+    <td align="center"><sub>Light Mode</sub><br><img src="docs/screenshots/light-mode.png" alt="L7-BatteryInfo popup in light mode" width="340"></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Info on the taskbar** — a numeric battery indicator in the system tray and a manual refresh action.
 - **Automatic monitoring** — requests a reading at startup and normally refreshes every 60 seconds.
 - **Low-battery alerts** — optional Windows notifications at 20% and 10%.
 - **Integrated Windows features** — optional startup at sign-in, light/dark theme adaptation, and recovery attempts after sleep or receiver reconnection.
+
+<p align="center">
+  <img src="docs/screenshots/about.png" alt="L7-BatteryInfo About window" width="280"><br>
+  <sub>About L7-BatteryInfo</sub>
+</p>
 
 ## Installation
 
