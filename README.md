@@ -65,4 +65,9 @@ Build instructions, tests, HID discovery, the battery probe and protocol limitat
 
 ---
 
-Developed by **MateFoxer**. Independent project; not affiliated with MCHOSE. The project is licensed under the [MIT License](LICENSE). Third-party dependencies have separate terms; rights to the bundled mouse image and application icon require confirmation.
+Developed by **MateFoxer**. Independent project; not affiliated with MCHOSE. 
+The project is licensed under the [MIT License](LICENSE). 
+
+The application code, custom UI, and original project materials are covered by that license unless otherwise noted.
+
+Product names, trademarks, and brand identifiers such as **MCHOSE** and **MCHOSE L7 Ultra+** belong to their respective owners and are used only to describe device compatibility.
