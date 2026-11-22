@@ -4,7 +4,7 @@
     <AssemblyName>L7-BatteryInfo</AssemblyName>
     <ApplicationIcon>Assets\L7-BatteryInfo.ico</ApplicationIcon>
     <RootNamespace>MouseBatteryTray</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Product>L7-BatteryInfo</Product>
     <Description>L7-BatteryInfo wireless mouse battery monitor</Description>
     <AssemblyTitle>L7-BatteryInfo wireless mouse battery monitor</AssemblyTitle>
