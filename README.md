@@ -31,6 +31,8 @@ L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windo
 
 The portable release is self-contained for Windows x64; no separate .NET runtime installation is needed.
 
+The optional v0.1.1 Slim build is a smaller, framework-dependent Windows x64 executable. It requires the [.NET 10 Windows Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) to be installed separately. The Portable build remains the default.
+
 1. [Download the v0.1.0 ZIP](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip).
 2. Extract it to a folder.
 3. Connect the mouse and run `L7-BatteryInfo.exe`.
