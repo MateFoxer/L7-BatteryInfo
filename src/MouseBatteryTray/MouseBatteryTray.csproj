@@ -6,8 +6,8 @@
     <RootNamespace>MouseBatteryTray</RootNamespace>
     <Version>0.1.1</Version>
     <Product>L7-BatteryInfo</Product>
-    <Description>L7-BatteryInfo wireless mouse battery monitor</Description>
-    <AssemblyTitle>L7-BatteryInfo wireless mouse battery monitor</AssemblyTitle>
+    <Description>L7-BatteryInfo</Description>
+    <AssemblyTitle>L7-BatteryInfo</AssemblyTitle>
     <Company>MateFoxer</Company>
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
