@@ -2,6 +2,52 @@ namespace MouseBatteryTray.Hid.Tests;
 
 public class LifecycleTests
 {
+    [Fact] public void UnrelatedDeviceChangeRequiresFreshReadBeforeRestoringStatus()
+    {
+        var s = new LifecycleState(); s.ReadingAccepted(); int old = s.Generation;
+        s.DeviceChanged(0);
+        Assert.True(s.Stale); Assert.False(s.Accept(old));
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+        s.Verified(ReceiverState.Present, s.Generation, 3000);
+        Assert.True(s.Stale);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(6000, false));
+        s.ReadingAccepted(); Assert.False(s.Stale);
+    }
+    [Fact] public void TransientFailureGetsOneDelayedRetryAndRecovers()
+    {
+        var s = new LifecycleState(); s.ReadingAccepted();
+        s.ReadingFailed(false, s.Generation, 100);
+        Assert.True(s.Stale); Assert.Equal(RecoveryWork.None, s.TakeWork(5099, false));
+        Assert.Equal(RecoveryWork.None, s.TakeWork(5100, true));
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(5100, false));
+        s.ReadingAccepted(); Assert.False(s.Stale);
+    }
+    [Fact] public void RetryIsBoundedAndNextNormalFailureCanRetryAgain()
+    {
+        var s = new LifecycleState(); s.ReadingFailed(false, s.Generation, 0);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(5000, false));
+        s.ReadingFailed(false, s.Generation, 5000);
+        Assert.False(s.Pending); Assert.True(s.Stale);
+        s.ReadingFailed(false, s.Generation, 65000);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(70000, false));
+    }
+    [Fact] public void ConfirmedAbsentDoesNotRetryAsTransientAndReconnectRecovers()
+    {
+        var s = new LifecycleState(); s.ReadingAccepted();
+        s.ReadingFailed(true, s.Generation, 0);
+        Assert.Equal(ReceiverState.Absent, s.Receiver); Assert.True(s.Stale); Assert.False(s.Pending);
+        s.DeviceChanged(1); Assert.Equal(RecoveryWork.Verify, s.TakeWork(3001, false));
+        s.Verified(ReceiverState.Present, s.Generation, 3001);
+        Assert.Equal(RecoveryWork.Refresh, s.TakeWork(6001, false));
+        s.ReadingAccepted(); Assert.False(s.Stale); Assert.Equal(ReceiverState.Present, s.Receiver);
+    }
+    [Fact] public void ObsoleteFailureCannotOverrideNewDeviceChange()
+    {
+        var s = new LifecycleState(); int old = s.Generation; s.DeviceChanged(0);
+        s.ReadingFailed(true, old, 1);
+        Assert.Equal(ReceiverState.Unknown, s.Receiver);
+        Assert.Equal(RecoveryWork.Verify, s.TakeWork(3000, false));
+    }
     [Fact] public void ResumeMakesReadingStaleAndDelaysRefresh()
     {
         var s = new LifecycleState(); s.ReadingAccepted(); s.Resume(100);

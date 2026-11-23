@@ -48,6 +48,14 @@ public class BatteryProtocolTests
         Assert.Null(BatteryProtocol.Parse(Response()[..12]));
     }
 
+    [Fact] public void IdenticalValidResponsesCannotProveFreshness()
+    {
+        var cached = Response();
+        Assert.Equal(BatteryProtocol.Parse(cached), BatteryProtocol.Parse(cached));
+        Assert.True(BatteryProtocol.IsLikelyWirelessOnline(BatteryProtocol.Parse(cached)!));
+        // The observed format has no verified sequence number or timestamp to reject this cache.
+    }
+
     [Theory]
     [InlineData(0x09, true)]
     [InlineData(0x01, false)]

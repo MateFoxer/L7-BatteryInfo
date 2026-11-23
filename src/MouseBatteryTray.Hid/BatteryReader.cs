@@ -41,9 +41,14 @@ public static class BatteryReader
         response[0] = BatteryProtocol.ReportId;
         stream.GetFeature(response);
         var reading = BatteryProtocol.Parse(response) ?? throw new InvalidDataException("Invalid or echoed status response.");
-        if (!BatteryProtocol.IsLikelyWirelessOnline(reading)) throw new InvalidDataException("Status does not indicate an active wireless link.");
+        if (!BatteryProtocol.IsLikelyWirelessOnline(reading)) throw new WirelessOfflineException();
         return reading;
     }
+}
+
+public sealed class WirelessOfflineException : IOException
+{
+    public WirelessOfflineException() : base("Status does not indicate an active wireless link.") { }
 }
 
 public sealed class ReceiverAbsentException : InvalidOperationException

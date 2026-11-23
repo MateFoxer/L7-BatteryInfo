@@ -12,6 +12,7 @@ internal sealed class LifecycleState
     internal ReceiverState Receiver { get; private set; } = ReceiverState.Unknown;
     private long? verifyAt, refreshAt;
     private bool verifying;
+    private int retries;
 
     internal void QueueInitialRead(long now)
     {
@@ -21,7 +22,7 @@ internal sealed class LifecycleState
     internal void Resume(long now)
     {
         if (Closed) return;
-        Generation++; Stale = true;
+        Generation++; Stale = true; retries = 0;
         // A resume during receiver verification must not bypass revalidation.
         if (verifyAt.HasValue || verifying) { verifyAt = now + 3000; refreshAt = null; }
         else refreshAt = now + 3000;
@@ -29,7 +30,7 @@ internal sealed class LifecycleState
     internal void DeviceChanged(long now)
     {
         if (Closed) return;
-        Generation++; Stale = true; verifyAt = now + 3000; refreshAt = null;
+        Generation++; Stale = true; retries = 0; verifyAt = now + 3000; refreshAt = null;
     }
     internal RecoveryWork TakeWork(long now, bool busy)
     {
@@ -53,6 +54,14 @@ internal sealed class LifecycleState
         }
     }
     internal bool Accept(int generation) => !Closed && generation == Generation && !verifyAt.HasValue;
-    internal void ReadingAccepted() { if (!Closed) { Stale = false; Receiver = ReceiverState.Present; } }
+    internal void ReadingAccepted() { if (!Closed) { Stale = false; Receiver = ReceiverState.Present; retries = 0; } }
+    internal void ReadingFailed(bool absent, int generation, long now)
+    {
+        if (!Accept(generation)) return;
+        Stale = true;
+        if (absent) { Receiver = ReceiverState.Absent; retries = 0; return; }
+        if (retries++ == 0) refreshAt = now + 5000;
+        else retries = 0; // The next normal poll starts a new bounded attempt.
+    }
     internal void Shutdown() { Closed = true; Generation++; verifyAt = refreshAt = null; }
 }

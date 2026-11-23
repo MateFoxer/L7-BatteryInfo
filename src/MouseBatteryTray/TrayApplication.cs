@@ -20,6 +20,12 @@ internal sealed class TrayApplication : ApplicationContext
     private long lastTick;
     private long nextPoll;
     private bool busy, failed, closing;
+    private bool ageReported;
+    private static readonly bool diagnostics = Environment.GetEnvironmentVariable("L7_BATTERY_DIAGNOSTICS") == "1";
+    private static void Diagnose(string reason)
+    {
+        if (diagnostics) Trace.WriteLine($"L7-BatteryInfo {DateTimeOffset.UtcNow:O} {reason}");
+    }
     private readonly LifecycleState lifecycle = new();
     private static long Now() => (long)Stopwatch.GetElapsedTime(0).TotalMilliseconds;
 
@@ -73,6 +79,7 @@ internal sealed class TrayApplication : ApplicationContext
         {
             if (closing) return;
             lifecycle.Resume(Now());
+            Diagnose("resume: reading stale");
             UpdateDisplay();
         }); }
         catch (InvalidOperationException) { } // The UI may have been disposed during shutdown.
@@ -84,6 +91,7 @@ internal sealed class TrayApplication : ApplicationContext
         {
             if (closing) return;
             lifecycle.DeviceChanged(Now());
+            Diagnose("device list changed: verifying receiver");
             UpdateDisplay();
         }); }
         catch (InvalidOperationException) { }
@@ -102,6 +110,7 @@ internal sealed class TrayApplication : ApplicationContext
                 catch (Exception) { return ReceiverState.Unknown; }
             });
             lifecycle.Verified(state, generation, Now());
+            Diagnose($"receiver verification: {state}");
         }
         finally
         {
@@ -159,11 +168,20 @@ internal sealed class TrayApplication : ApplicationContext
             last = result;
             lastTick = Stopwatch.GetTimestamp();
             failed = false;
+            ageReported = false;
+            Diagnose("valid online response accepted");
             NotifyIfLow(result.Percent);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            if (!closing) failed = true;
+            if (!closing && lifecycle.Accept(generation))
+            {
+                bool absent = ex is ReceiverAbsentException;
+                lifecycle.ReadingFailed(absent, generation, Now());
+                failed = true;
+                Diagnose(absent ? "receiver absent" : ex is InvalidDataException ? "invalid response" :
+                    ex is WirelessOfflineException ? "wireless link not active" : "HID read or enumeration failed");
+            }
         }
         finally
         {
@@ -192,7 +210,9 @@ internal sealed class TrayApplication : ApplicationContext
     }
     private void UpdateDisplay()
     {
-        bool stale = last is not null && (lifecycle.Stale || failed || Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120));
+        bool expired = last is not null && Stopwatch.GetElapsedTime(lastTick) > TimeSpan.FromSeconds(120);
+        if (expired && !ageReported) { Diagnose("reading expired after 120 seconds"); ageReported = true; }
+        bool stale = last is not null && (lifecycle.Stale || failed || expired);
         menu.Percent = stale || lifecycle.Receiver == ReceiverState.Absent ? null : last?.Percent;
         var tooltip = menu.Percent is int percent
             ? $"L7-BatteryInfo\nMCHOSE L7 Ultra+\nBattery: {percent}%"
