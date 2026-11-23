@@ -2,9 +2,9 @@
 
 L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windows notification area, with a compact menu for refresh, alerts and startup settings.
 
-![Windows 10/11](https://img.shields.io/badge/Windows-10%20%2F%2011-555555?logo=windows11&logoColor=white) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.1.0](https://img.shields.io/badge/version-0.1.0-398b62) [![License: MIT](https://img.shields.io/badge/license-MIT-555555)](LICENSE)
+![Windows 10/11](https://img.shields.io/badge/Windows-10%20%2F%2011-555555?logo=windows11&logoColor=white) ![.NET 10](https://img.shields.io/badge/.NET-10-555555) ![Version 0.2.0](https://img.shields.io/badge/version-0.2.0-398b62) [![License: MIT](https://img.shields.io/badge/license-MIT-555555)](LICENSE)
 
-**[Download v0.1.0 for Windows x64](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip)** · [Release notes](https://github.com/MateFoxer/L7-BatteryInfo/releases/tag/v0.1.0)
+**[Download v0.2.0 Portable for Windows x64](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.2.0/L7-BatteryInfo-v0.2.0-win-x64.zip)** · [Release notes](docs/release-notes-v0.2.0.md)
 
 ## Application Preview
 
@@ -31,9 +31,9 @@ L7-BatteryInfo puts the battery percentage of your MCHOSE L7 Ultra+ in the Windo
 
 The portable release is self-contained for Windows x64; no separate .NET runtime installation is needed.
 
-The optional v0.1.1 Slim build is a smaller, framework-dependent Windows x64 executable. It requires the [.NET 10 Windows Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) to be installed separately. The Portable build remains the default.
+The optional [v0.2.0 Slim build](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.2.0/L7-BatteryInfo-v0.2.0-slim-win-x64.zip) is a smaller, framework-dependent Windows x64 executable. It requires the [.NET 10 Windows Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) to be installed separately. The Portable build remains the recommended download.
 
-1. [Download the v0.1.0 ZIP](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.1.0/L7-BatteryInfo-v0.1.0-win-x64.zip).
+1. [Download the v0.2.0 Portable ZIP](https://github.com/MateFoxer/L7-BatteryInfo/releases/download/v0.2.0/L7-BatteryInfo-v0.2.0-win-x64.zip).
 2. Extract it to a folder.
 3. Connect the mouse and run `L7-BatteryInfo.exe`.
 4. Find the battery indicator in the Windows notification area; it may be under **Show hidden icons** (`^`).
