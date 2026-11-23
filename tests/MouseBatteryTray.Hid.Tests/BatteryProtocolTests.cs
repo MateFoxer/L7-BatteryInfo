@@ -48,6 +48,28 @@ public class BatteryProtocolTests
         Assert.Null(BatteryProtocol.Parse(Response()[..12]));
     }
 
+    [Fact] public void ReportsExactRejectionReasonWithoutAcceptingInvalidData()
+    {
+        void Rejected(byte[] response, BatteryResponseError expected)
+        {
+            Assert.Null(BatteryProtocol.Parse(response, out var reason));
+            Assert.Equal(expected, reason);
+            Assert.Null(BatteryProtocol.Parse(response));
+        }
+
+        Rejected(Response()[..12], BatteryResponseError.TooShort);
+        Rejected(BatteryProtocol.CreateRequest(65), BatteryResponseError.EchoedRequest);
+        var wrongId = Response(); wrongId[0] = 0x12; Rejected(wrongId, BatteryResponseError.InvalidReportId);
+        var wrongCommand = Response(); wrongCommand[1] = 0xFA; Rejected(wrongCommand, BatteryResponseError.WrongCommand);
+        var wrongVendor = Response(); wrongVendor[2] = 0xFF; wrongVendor[3] = 0xFF; Rejected(wrongVendor, BatteryResponseError.InvalidVendor);
+        var wrongModel = Response(); wrongModel[4] = 0xFF; wrongModel[5] = 0xFF; Rejected(wrongModel, BatteryResponseError.InvalidModel);
+        Rejected(Response(101), BatteryResponseError.PercentageOutOfRange);
+        var nearEcho = BatteryProtocol.CreateRequest(65); nearEcho[^1] = 1;
+        Rejected(nearEcho, BatteryResponseError.InvalidVendor);
+        Assert.NotNull(BatteryProtocol.Parse(Response(), out var success));
+        Assert.Equal(BatteryResponseError.None, success);
+    }
+
     [Fact] public void IdenticalValidResponsesCannotProveFreshness()
     {
         var cached = Response();

@@ -1,4 +1,5 @@
 using HidSharp;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace MouseBatteryTray.Hid;
@@ -6,6 +7,7 @@ namespace MouseBatteryTray.Hid;
 /// <summary>One guarded, synchronous status exchange. A native feature call can block.</summary>
 public static class BatteryReader
 {
+    private static readonly bool diagnostics = Environment.GetEnvironmentVariable("L7_BATTERY_DIAGNOSTICS") == "1";
     public static BatteryDevice SelectDevice()
     {
         var candidates = new List<BatteryDevice>();
@@ -40,7 +42,12 @@ public static class BatteryReader
         var response = new byte[selected.BufferLength];
         response[0] = BatteryProtocol.ReportId;
         stream.GetFeature(response);
-        var reading = BatteryProtocol.Parse(response) ?? throw new InvalidDataException("Invalid or echoed status response.");
+        var reading = BatteryProtocol.Parse(response, out var error);
+        if (reading is null)
+        {
+            if (diagnostics) Trace.WriteLine($"L7-BatteryInfo {DateTimeOffset.UtcNow:O} invalid response: {error}");
+            throw new InvalidDataException("Invalid or echoed status response.");
+        }
         if (!BatteryProtocol.IsLikelyWirelessOnline(reading)) throw new WirelessOfflineException();
         return reading;
     }

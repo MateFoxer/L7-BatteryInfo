@@ -31,6 +31,20 @@ public class LifecycleTests
         s.ReadingFailed(false, s.Generation, 65000);
         Assert.Equal(RecoveryWork.Refresh, s.TakeWork(70000, false));
     }
+    [Fact] public void InvalidResponseSchedulesOnlyOneRetryAndValidResponseRecovers()
+    {
+        var state = new LifecycleState(); state.ReadingAccepted();
+        Assert.Null(MouseBatteryTray.Hid.BatteryProtocol.Parse(MouseBatteryTray.Hid.BatteryProtocol.CreateRequest(65), out var reason));
+        Assert.Equal(MouseBatteryTray.Hid.BatteryResponseError.EchoedRequest, reason);
+        state.ReadingFailed(false, state.Generation, 100);
+        Assert.True(state.Stale);
+        Assert.Equal(RecoveryWork.None, state.TakeWork(5099, false));
+        Assert.Equal(RecoveryWork.Refresh, state.TakeWork(5100, false));
+        state.ReadingFailed(false, state.Generation, 5100);
+        Assert.False(state.Pending);
+        state.ReadingAccepted();
+        Assert.False(state.Stale);
+    }
     [Fact] public void ConfirmedAbsentDoesNotRetryAsTransientAndReconnectRecovers()
     {
         var s = new LifecycleState(); s.ReadingAccepted();
